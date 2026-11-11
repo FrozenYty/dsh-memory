@@ -29,16 +29,21 @@ filesystem plus one cache, so neither writes session events.
 ## Where the policy lives
 
 The rules for writing into the notebook — what earns an entry, the two shapes, the entry format,
-how entries age — are themselves an entry: `notebook-policy.md`. The injected index header names it,
-so it is discoverable without a skill advertising it, and it costs one index line instead of a
-resident prompt section.
+how entries age — are themselves an entry: `notebook-policy.md`, so they travel with the entries they
+govern.
 
-The policy is `status: verified`: it is granted by the user, not observed by the agent. It carries
-an `Evidence:` line saying it is a policy rather than a claim, so the audit does not flag it.
+That entry ships with the plugin as `templates/notebook-policy.md`. The plugin seeds it into a
+notebook directory that exists but carries no policy: exclusive create, so an edited copy is never
+overwritten; once per directory per process; and only where `.agents/memory/` already exists, so
+installing the plugin does not create directories in every project the agent opens. When no policy
+is present, the index header simply does not name one.
+
+The seeded policy is `status: verified`: it is granted, not observed. It carries an `Evidence:` line
+saying it is a policy rather than a claim, so the audit does not flag it.
 
 Nothing in the plugin enforces the policy. The plugin enforces what it can check mechanically —
 `evidence` on write, `disputed` filtering, the trust states — and the rest is prose the model reads
-when a message mentions memory. See [ADR 0007](adr/07-policy-in-the-notebook.md).
+when a message mentions memory. See [ADR 0008](adr/08-policy-template-and-seeding.md).
 
 ## Data flow
 

@@ -21,9 +21,11 @@
  * lives in files and in memory), prompt text only through `systemPrompt`, and the plugin
  * is inert in profiles without the services it injects.
  */
+import { readFileSync } from 'node:fs'
 import {
   auditEntries,
   buildIndex,
+  ensurePolicyEntry,
   loadNotebook,
   normalizeKey,
   pickHits,
@@ -41,6 +43,19 @@ const SECTION_NAME = 'memory-notebook:index'
 const SECTION_ORDER = 4100
 const CONTEXT_NAME = 'memory-notebook:recall'
 const CONTEXT_ORDER = 4101
+
+/**
+ * The policy ships with the plugin. It is seeded into a notebook that exists but carries none —
+ * never as a file every user is assumed to already have, which is how a bundled skill would have
+ * worked and what a fresh install can never satisfy.
+ */
+const POLICY_TEMPLATE = (() => {
+  try {
+    return readFileSync(new URL('./templates/notebook-policy.md', import.meta.url), 'utf8')
+  } catch {
+    return ''
+  }
+})()
 
 const DEFAULTS = {
   workspaceDir: '.agents/memory',
@@ -121,12 +136,31 @@ export function apply(ctx, config) {
     seenBySession.delete(sessionId)
   })
 
+  // --- seed the bundled policy into a notebook that has none ------------------
+  // Once per directory per process: an existing policy is never overwritten, so a user edit
+  // survives an upgrade, and a read-only notebook is silently left alone.
+  const seededDirs = new Set()
+  const seedPolicyOnce = (cwd) => {
+    const dir = resolveDirs(cfg, cwd)[0]
+    if (dir === undefined || seededDirs.has(dir)) return
+    seededDirs.add(dir)
+    try {
+      ensurePolicyEntry(dir, POLICY_TEMPLATE)
+    } catch {
+      /* a read-only notebook is not an error */
+    }
+  }
+
   // --- the resident index: absent entirely when the notebook is empty ---------
   if (cfg.showIndex) {
     ctx.systemPrompt.section({
       name: SECTION_NAME,
       order: SECTION_ORDER,
-      text: (context) => buildIndex(loadNotebook(cfg, cwdOf(context)), cfg),
+      text: (context) => {
+        const cwd = cwdOf(context)
+        seedPolicyOnce(cwd)
+        return buildIndex(loadNotebook(cfg, cwd), cfg)
+      },
     })
   }
 

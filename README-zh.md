@@ -29,8 +29,9 @@
 3. **四个工具**，让 agent 有意识地读和写；每次写入都必须带证据。
 
 notebook 本身不被改动：一个主题一个 markdown 文件、可选的 `INDEX.md` 定顺序、可选 frontmatter，
-外加一条 `notebook-policy.md` 说明「写进这里」的规则。政策随笔记本走，不需要额外的 skill 或
-外部文档陪着它。为什么这样切分，见 [docs/architecture-en.md](docs/architecture-en.md)。
+外加一条 `notebook-policy.md` 说明「写进这里」的规则。这份政策**随插件分发**，以模板形式在
+notebook 缺少它时播种进去，且永远不会覆盖你改过的副本。为什么这样切分，见
+[docs/architecture-en.md](docs/architecture-en.md)。
 
 ## 安装
 

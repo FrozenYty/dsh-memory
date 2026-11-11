@@ -30,13 +30,15 @@ const STOPWORDS = new Set([
 
 const CJK_CHAR = /[\u3400-\u9fff]/
 
-export function indexHead(where) {
+export function indexHead(where, hasPolicy = false) {
+  const policy = hasPolicy ? " `notebook-policy.md` holds this notebook's own rules." : ''
   return (
     '<memory-notebook>\n' +
     `Notes live in \`${where}\`, one file per subject. Each name is a trigger: ` +
     'if a name matches what you are about to do, read it with `memory_read` before acting. ' +
-    "Do not guess an entry's content from its name. `notebook-policy.md` holds this " +
-    'notebook\'s own rules.\n'
+    "Do not guess an entry's content from its name." +
+    policy +
+    '\n'
   )
 }
 
@@ -170,7 +172,11 @@ export function loadNotebook(config, cwd) {
 export function buildIndex(entries, config) {
   const visible = entries.filter((entry) => entry.status !== 'disputed')
   if (visible.length === 0) return ''
-  const head = indexHead(config.workspaceDir.length > 0 ? config.workspaceDir : config.machineDir)
+  const hasPolicy = visible.some((entry) => entry.key === 'notebook-policy')
+  const head = indexHead(
+    config.workspaceDir.length > 0 ? config.workspaceDir : config.machineDir,
+    hasPolicy,
+  )
   const lines = []
   let used = head.length + INDEX_TAIL.length
   for (const entry of visible) {
@@ -336,6 +342,30 @@ export function auditEntries(entries, options = {}) {
     if (now - entry.mtimeMs > staleMs) stale.push(entry)
   }
   return { total: entries.length, missingEvidence, stale, staleDays }
+}
+
+// ---------------------------------------------------------------------------
+// seeding
+// ---------------------------------------------------------------------------
+
+/**
+ * Seed the policy into a notebook that exists but carries none.
+ *
+ * The policy ships with the plugin as `templates/notebook-policy.md`, not as a file every user is
+ * expected to have. Seeding is exclusive-create: an existing entry is never overwritten, because a
+ * policy the user edited is theirs and an upgrade must not silently replace it.
+ *
+ * A directory that does not exist is left alone — installing a memory plugin should not create
+ * `.agents/memory/` in every project the agent opens.
+ */
+export function ensurePolicyEntry(dir, template) {
+  if (typeof template !== 'string' || template.length === 0) return false
+  if (!existsSync(dir)) return false
+  const path = join(dir, 'notebook-policy.md')
+  if (existsSync(path)) return false
+  writeFileSync(path, template, 'utf8')
+  ensureIndexed(dir, 'notebook-policy.md')
+  return true
 }
 
 // ---------------------------------------------------------------------------

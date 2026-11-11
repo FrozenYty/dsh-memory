@@ -35,9 +35,9 @@ markdown in your repository; the plugin decides *when to look* and *when to writ
 
 The notebook itself is untouched: one markdown file per subject, an optional `INDEX.md` fixing
 their order, optional frontmatter — and one entry, `notebook-policy.md`, that states the rules for
-writing into it. The policy travels with the notebook, so no skill or external document has to
-accompany it. See [docs/architecture-en.md](docs/architecture-en.md) for why the parts are arranged
-this way.
+writing into it. That policy **ships with the plugin** as a template and is seeded into any notebook
+that lacks one, never overwriting an edited copy. See
+[docs/architecture-en.md](docs/architecture-en.md) for why the parts are arranged this way.
 
 ## Install
 

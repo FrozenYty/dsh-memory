@@ -1,6 +1,6 @@
 # 0007 — The notebook's policy lives in the notebook, not in a skill
 
-- **Status:** Accepted
+- **Status:** Superseded by [0008](08-policy-template-and-seeding.md)
 - **Date:** 2026-11-11
 - **Supersedes:** —
 

@@ -7,7 +7,7 @@
  *
  *   node test-core.mjs
  */
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -15,6 +15,7 @@ import {
   ACK_PATTERN,
   auditEntries,
   buildIndex,
+  ensurePolicyEntry,
   loadNotebook,
   pickHits,
   renderRecall,
@@ -213,14 +214,64 @@ check(
 )
 
 // ---------------------------------------------------------------------------
-console.log('\n[8] safety')
+console.log('\n[8] policy seeding')
+// ---------------------------------------------------------------------------
+// The policy ships with the plugin. A fresh install has no notebook entry for it, so the plugin
+// must be able to seed one — and must never overwrite a policy the user has edited.
+const seedRoot = mkdtempSync(join(tmpdir(), 'mn-seed-'))
+const seedDir = join(seedRoot, 'notebook')
+mkdirSync(seedDir, { recursive: true })
+const TEMPLATE = '# Policy\n\nEvidence: policy, not a fact.\n'
+
+check('a notebook without a policy gets one', ensurePolicyEntry(seedDir, TEMPLATE) === true)
+check('the seeded policy is on disk', existsSync(join(seedDir, 'notebook-policy.md')))
+check(
+  'INDEX.md lists the seeded policy',
+  readFileSync(join(seedDir, 'INDEX.md'), 'utf8').includes('`notebook-policy.md`'),
+)
+check('a second seed is a no-op', ensurePolicyEntry(seedDir, TEMPLATE) === false)
+
+writeFileSync(join(seedDir, 'notebook-policy.md'), '# Edited by the user\n', 'utf8')
+ensurePolicyEntry(seedDir, TEMPLATE)
+check(
+  'an edited policy is never overwritten',
+  readFileSync(join(seedDir, 'notebook-policy.md'), 'utf8') === '# Edited by the user\n',
+)
+
+const absentDir = join(seedRoot, 'does-not-exist')
+check(
+  'a missing notebook directory is left alone',
+  ensurePolicyEntry(absentDir, TEMPLATE) === false && !existsSync(absentDir),
+)
+check('an empty template writes nothing', ensurePolicyEntry(join(seedRoot, 'empty'), '') === false)
+
+const seededIndex = buildIndex(scanDir(seedDir), { ...config, workspaceDir: 'notebook' })
+check(
+  'the index names the policy when one exists',
+  seededIndex.includes("`notebook-policy.md` holds this notebook"),
+  seededIndex.slice(0, 260),
+)
+const noPolicyIndex = buildIndex(entries, config)
+check(
+  'the index does not advertise a policy that is absent',
+  !noPolicyIndex.includes('notebook-policy.md'),
+)
+
+// The template is a package resource, not a file every user is assumed to have. If it stops
+// shipping, a fresh install silently gets no policy and the index stops naming one.
+const shippedTemplate = readFileSync(new URL('./templates/notebook-policy.md', import.meta.url), 'utf8')
+check('the bundled policy template ships', shippedTemplate.length > 1000, `${shippedTemplate.length} chars`)
+check('the shipped template has an Evidence line', shippedTemplate.includes('Evidence:'))
+
+// ---------------------------------------------------------------------------
+console.log('\n[9] safety')
 // ---------------------------------------------------------------------------
 const readOnlyDir = mkdtempSync(join(tmpdir(), 'mn-ro-'))
 writeFileSync(join(readOnlyDir, 'broken.md'), '---\nstatus: candidate\n---\nno heading, no trouble\n', 'utf8')
 const broken = scanDir(readOnlyDir)
 check('an entry without a heading still loads', broken.length === 1 && broken[0].title === 'broken')
 
-for (const dir of [emptyDir, writeDir, readOnlyDir, writtenDir]) {
+for (const dir of [emptyDir, writeDir, readOnlyDir, writtenDir, seedRoot]) {
   try {
     rmSync(dir, { recursive: true, force: true })
   } catch {
