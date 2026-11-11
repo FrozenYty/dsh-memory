@@ -6,6 +6,7 @@
 //   d) locale/*.json carry the same keys, and none of them is empty
 //   e) the version in package.json has a matching CHANGELOG section
 //   f) every key in index.js DEFAULTS is documented in both README tables
+//   g) the fixture policy and the bundled template are the same document
 //
 // Rules are reported together so one run shows every problem.
 
@@ -300,6 +301,34 @@ function checkConfigTable() {
   return { ok: details.length === 0, summary: `${keys.length} configuration key(s)`, details };
 }
 
+// The fixture notebook ships a policy identical to the bundled template, because the tests exercise the
+// seeding path against it. "They are the same document" is a claim a comment makes and nothing enforced:
+// the rename to dsh-memory updated the template and left the fixture naming the old package.
+function checkPolicyCopies() {
+  const template = readText(path.join(repoRoot, 'templates', 'notebook-policy.md'));
+  const fixture = readText(path.join(repoRoot, 'test', 'fixtures', 'notebook', 'notebook-policy.md'));
+  if (template === null || fixture === null) {
+    return { ok: true, summary: 'no pair of policy copies to compare', details: [] };
+  }
+  const normalize = (text) => text.replace(/\r\n/g, '\n').replace(/[ \t]+$/gm, '').trim();
+  if (normalize(template) === normalize(fixture)) {
+    return { ok: true, summary: 'template and fixture policy agree', details: [] };
+  }
+  const left = new Set(normalize(template).split('\n'));
+  const right = new Set(normalize(fixture).split('\n'));
+  const onlyTemplate = [...left].filter((line) => !right.has(line) && line !== '').slice(0, 3);
+  const onlyFixture = [...right].filter((line) => !left.has(line) && line !== '').slice(0, 3);
+  return {
+    ok: false,
+    summary: 'template and fixture policy agree',
+    details: [
+      'templates/notebook-policy.md and test/fixtures/notebook/notebook-policy.md are one document kept in two places',
+      ...onlyTemplate.map((line) => `only in template: ${line.slice(0, 80)}`),
+      ...onlyFixture.map((line) => `only in fixture: ${line.slice(0, 80)}`),
+    ],
+  };
+}
+
 function main() {
   const rules = [
     { label: 'a) ADR index', result: checkAdrIndex() },
@@ -308,6 +337,7 @@ function main() {
     { label: 'd) locale files agree', result: checkLocales() },
     { label: 'e) version is recorded', result: checkVersionRecorded() },
     { label: 'f) configuration is documented', result: checkConfigTable() },
+    { label: 'g) policy copies agree', result: checkPolicyCopies() },
   ];
 
   let passed = 0;

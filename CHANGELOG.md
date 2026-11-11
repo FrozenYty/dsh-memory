@@ -7,6 +7,21 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.14.1] — 2026-11-11
+
+### Fixed
+
+- **The test fixture's policy still named `dsh-memory-notebook`.** The rename covered `templates/` but
+  not `test/fixtures/`, so the template the plugin seeds from was correct while the copy the tests run
+  against was not. Two copies of one document, one of them updated.
+
+### Added
+
+- **A check that the two policy copies stay identical.** "The fixture ships the same policy as the
+  template" was a claim in a comment and enforced nowhere. This is the seventh check of the same shape —
+  a hand-maintained copy of something that lives elsewhere, invisible until it diverges — and the third
+  one this rename exposed. Verified by adding a line to the fixture only: it fails naming that line.
+
 ## [0.14.0] — 2026-11-11
 
 ### Changed
@@ -394,7 +409,8 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/v0.14.1...HEAD
+[0.14.1]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.14.1
 [0.14.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.14.0
 [0.13.3]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.13.3
 [0.13.2]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.13.2
