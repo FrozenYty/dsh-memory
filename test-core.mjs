@@ -442,6 +442,13 @@ const singleChar = { ...chineseWordEntry, triggers: ['好'] }
 const oneChar = scoreEntry(singleChar, tokenize('好的'))
 check('a single Chinese character does not', oneChar.hits < 2, JSON.stringify(oneChar))
 
+// Body words alone never qualify. A long entry that quotes a sentence collected six body hits from
+// that sentence and recalled on nothing but coincidence; body text explains, it does not identify.
+const bodyOnly = { ...chineseWordEntry, triggers: [], body: '今天天气怎么样 服务器重启一下 路径怎么拼' }
+const bodyScored = scoreEntry(bodyOnly, tokenize('今天天气怎么样'))
+check('body words accumulate but do not qualify', bodyScored.strong === false && bodyScored.hits > 2, JSON.stringify(bodyScored))
+check('such an entry is never recalled', pickHits([bodyOnly], '今天天气怎么样', config).length === 0)
+
 // ---------------------------------------------------------------------------
 console.log('\n[12] safety')
 // ---------------------------------------------------------------------------

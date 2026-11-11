@@ -295,6 +295,7 @@ export function scoreEntry(entry, queryTokens) {
 
   let score = 0
   let hits = 0
+  let strong = false
   const covered = new Set()
 
   for (const phrase of entry.triggers ?? []) {
@@ -309,6 +310,7 @@ export function scoreEntry(entry, queryTokens) {
       }
     }
     if (!whole) continue
+    strong = true
     if (phraseTokens.size === 1) {
       const [token] = phraseTokens
       const identifies = tokenMatches(nameTokens, token)
@@ -327,9 +329,11 @@ export function scoreEntry(entry, queryTokens) {
     if (tokenMatches(nameTokens, token)) {
       score += 4
       hits += 1
+      strong = true
     } else if (tokenMatches(titleTokens, token)) {
       score += 3
       hits += 1
+      strong = true
     } else if (bodyTokens.has(token)) {
       // Body matching stays exact: it is the largest set, and prefix scanning it would cost more
       // than the recall it buys.
@@ -337,7 +341,7 @@ export function scoreEntry(entry, queryTokens) {
       hits += 1
     }
   }
-  return { score, hits }
+  return { score, hits, strong }
 }
 
 export function textOfMessage(message) {
@@ -355,7 +359,15 @@ export function extractQuery(messages) {
   return tail.map(textOfMessage).join(' ').replace(/\s+/g, ' ').trim().slice(0, 1200)
 }
 
-/** Rank entries against one query; returns the selected hits, highest score first. */
+/**
+ * Rank entries against one query; returns the selected hits, highest score first.
+ *
+ * A hit needs a **strong** match — a trigger, the filename, or the title — not just body words.
+ * Body text is the largest set and the weakest evidence, and it accumulates: a long entry that
+ * happens to quote a sentence collected six body hits from that sentence alone and recalled on
+ * nothing but coincidence. An entry's subject is what its name, title and triggers say it is; the
+ * body explains, it does not identify.
+ */
 export function pickHits(entries, query, config) {
   const queryTokens = tokenize(query)
   if (queryTokens.size === 0) return []
@@ -363,6 +375,7 @@ export function pickHits(entries, query, config) {
   for (const entry of entries) {
     if (entry.status === 'disputed') continue
     const scored = scoreEntry(entry, queryTokens)
+    if (!scored.strong) continue
     if (scored.hits < config.minRecallHits) continue
     if (scored.score < config.minRecallScore) continue
     hits.push({ entry, score: scored.score })
