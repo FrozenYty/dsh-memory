@@ -59,6 +59,7 @@ schema，配置值原样接收；下表默认值写在代码里。
 | `minRecallHits` | `2` | 至少几个不同的查询词命中。 |
 | `minQueryChars` | `6` | 短于此长度的消息不触发召回。 |
 | `skipAcknowledgements` | `true` | 只表示“收到/好的”的消息不触发召回。 |
+| `captureHintRatio` | `0.6` | 上下文窗口用到多少比例时提示一次“把值得记的先存下来”。`0` 关闭。 |
 
 ## 怎么写一条
 

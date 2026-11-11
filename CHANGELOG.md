@@ -7,6 +7,28 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.9.0] — 2026-11-11
+
+### Added
+
+- **A capture hint.** Once per session, when context pressure crosses `captureHintRatio` (default 0.6),
+  the plugin says the conversation is close to compaction and names the kind of thing worth writing.
+  It writes nothing; the model decides with `memory_write`. Capture previously depended entirely on
+  the model choosing, mid-task, to record something — the least reliable moment to ask.
+  [ADR 0010](docs/adr/10-capture-hint.md)
+- **Write-time rejection.** A write that would push the injected index past its budget is refused
+  before it lands, with the numbers and a way out. Truncation is the failure this prevents: entries
+  past the cut are never injected and nothing reports it. [ADR 0009](docs/adr/09-derived-index-and-write-refusal.md)
+
+### Changed
+
+- **The index is derived from the directory, not maintained by hand.** `syncIndexFile` rebuilds
+  `INDEX.md` from a scan, keeping the order already there. A file added by another tool is indexed; a
+  deleted one drops out. This closes the drift the notebook had produced twice, and which a check
+  script could only report after the fact.
+- `readIndexFiles` now parses list items only. Prose above the list may name a file in backticks — the
+  index header does exactly that for the policy — and counting it duplicated that entry in the order.
+
 ## [0.8.1] — 2026-11-11
 
 ### Fixed
@@ -178,7 +200,8 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory-notebook/compare/v0.8.1...HEAD
+[Unreleased]: https://github.com/FrozenYty/dsh-memory-notebook/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.9.0
 [0.8.1]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.8.1
 [0.8.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.8.0
 [0.7.1]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.7.1

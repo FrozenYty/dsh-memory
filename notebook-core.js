@@ -139,6 +139,9 @@ export function readIndexFiles(dir) {
   }
   const files = []
   for (const line of text.split(/\r?\n/)) {
+    // Only list items count. Prose above the list may name a file in backticks — the index header
+    // does exactly that for the policy — and counting it duplicated that entry in the order.
+    if (!/^\s*[-*]\s/.test(line)) continue
     const hit = line.match(/`([^`]+\.md)`/) ?? line.match(/\[[^\]]*\]\(([^)]+\.md)\)/)
     if (hit !== null) files.push(hit[1].replace(/^\.\//, ''))
   }
@@ -442,8 +445,7 @@ export function auditEntries(entries, options = {}) {
 // seeding
 // ---------------------------------------------------------------------------
 
-/**
- * Seed the policy into a notebook that exists but carries none.
+/** Seed the policy into a notebook that exists but carries none.
  *
  * The policy ships with the plugin as `templates/notebook-policy.md`, not as a file every user is
  * expected to have. Seeding is exclusive-create: an existing entry is never overwritten, because a
@@ -458,8 +460,83 @@ export function ensurePolicyEntry(dir, template) {
   const path = join(dir, 'notebook-policy.md')
   if (existsSync(path)) return false
   writeFileSync(path, template, 'utf8')
-  ensureIndexed(dir, 'notebook-policy.md')
+  syncIndexFile(dir)
   return true
+}
+
+const INDEX_PREAMBLE =
+  '# Memory index\n\n' +
+  'Most likely first. The filename is the trigger.\n\n' +
+  'This list is maintained by the plugin. Entries are added and removed automatically; ' +
+  'reorder the lines freely, that order is kept.\n\n'
+
+/**
+ * Rewrite `INDEX.md` so it matches the directory exactly, keeping the order the file already had.
+ *
+ * The index is derived data, not a hand-maintained document: a line for a file that no longer
+ * exists makes it lie, and a file with no line is invisible — the injected index never names it.
+ * Both have happened in this notebook. The plugin owns the lines; the human owns the order, because
+ * "most likely first" is a judgement no script can make.
+ *
+ * Only writes when the result differs, so a read-mostly turn never touches the filesystem.
+ */
+export function syncIndexFile(dir, entries = scanDir(dir)) {
+  const indexPath = join(dir, 'INDEX.md')
+  if (!existsSync(dir)) return false
+  const onDisk = new Set(entries.map((entry) => entry.file))
+  const listed = [...new Set(readIndexFiles(dir))].filter((file) => onDisk.has(file))
+  const listedSet = new Set(listed)
+  const added = entries
+    .filter((entry) => !listedSet.has(entry.file))
+    .sort((a, b) => b.mtimeMs - a.mtimeMs)
+    .map((entry) => entry.file)
+  const wanted = [...listed, ...added]
+  if (wanted.length === 0) return false
+
+  const text = INDEX_PREAMBLE + wanted.map((file) => `- \`${file}\`\n`).join('')
+  let current = ''
+  try {
+    current = readFileSync(indexPath, 'utf8')
+  } catch {
+    current = ''
+  }
+  // Compare only the ordered filenames: a comment or a heading change is the human's business.
+  if (readIndexFiles(dir).join('\n') === wanted.join('\n') && current.length > 0) return false
+  writeFileSync(indexPath, text, 'utf8')
+  return true
+}
+
+/**
+ * The exact length the injected index would have if `extraFiles` were added.
+ *
+ * Mirrors `buildIndex` so the write-time decision matches what the model would actually receive —
+ * an estimate that drifts from the renderer would either refuse writes that fit or admit writes
+ * that get truncated.
+ */
+export function projectedIndexChars(entries, config, extraFiles = []) {
+  const files = new Set(entries.filter((entry) => entry.status !== 'disputed').map((entry) => entry.file))
+  for (const file of extraFiles) files.add(file)
+  if (files.size === 0) return 0
+  const head = indexHead(config.workspaceDir.length > 0 ? config.workspaceDir : config.machineDir)
+  let total = head.length + INDEX_TAIL.length
+  for (const file of files) total += file.length + 3 // "- " + name + "\n"
+  return total
+}
+
+/**
+ * Would adding this entry push the injected index past its budget?
+ *
+ * An index that is truncated is worse than one that is short: the entries past the cut are never
+ * injected, so they may as well not exist, and nothing reports that they were dropped. Refusing the
+ * write protects the fact itself — it stays in the conversation, and the model is told to make room
+ * instead of losing it silently.
+ */
+export function indexBudgetVerdict(entries, config, newFile) {
+  const budget = config.indexBudgetChars
+  const current = projectedIndexChars(entries, config)
+  const after = projectedIndexChars(entries, config, [newFile])
+  if (after <= budget) return { ok: true, current, after, budget }
+  return { ok: false, current, after, budget }
 }
 
 // ---------------------------------------------------------------------------
@@ -477,18 +554,6 @@ export function normalizeKey(raw) {
   if (key === 'index') throw new Error('"index" is reserved for INDEX.md')
   if (key.length > 80) throw new Error('a memory name must be 80 characters or fewer')
   return key
-}
-
-export function ensureIndexed(dir, file) {
-  const indexPath = join(dir, 'INDEX.md')
-  let text = existsSync(indexPath) ? readFileSync(indexPath, 'utf8') : ''
-  if (text.includes(`\`${file}\``)) return
-  if (text.trim().length === 0) {
-    text = '# Memory index\n\nMost likely first. The filename is the trigger.\n\n'
-  }
-  if (!text.endsWith('\n')) text += '\n'
-  text += `- \`${file}\`\n`
-  writeFileSync(indexPath, text, 'utf8')
 }
 
 export function writeEntryFile(dir, fields) {
@@ -513,7 +578,9 @@ export function writeEntryFile(dir, fields) {
   if (fields.body.trim().length > 0) lines.push(fields.body.trim(), '')
   lines.push(`Evidence: \`${fields.evidence}\``, '')
   writeFileSync(path, lines.join('\n'), 'utf8')
-  ensureIndexed(dir, fields.key + '.md')
+  // The index is derived from the directory, so it is rebuilt rather than appended to. Appending
+  // was how a line for a deleted file survived and a renamed one was listed twice.
+  syncIndexFile(dir)
   return created
 }
 
@@ -533,5 +600,8 @@ export function setStatus(dir, key, status) {
   }
   rebuilt.push('---', '')
   writeFileSync(path, rebuilt.join('\n') + body.replace(/^\r?\n/, ''), 'utf8')
+  // A disputed entry stays in `INDEX.md` — the file exists — but is filtered out of the injected
+  // index, so the two views must be rebuilt from the same scan to stay honest.
+  syncIndexFile(dir)
   return status
 }

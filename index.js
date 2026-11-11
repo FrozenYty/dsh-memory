@@ -26,6 +26,7 @@ import {
   auditEntries,
   buildIndex,
   ensurePolicyEntry,
+  indexBudgetVerdict,
   indexDrift,
   loadNotebook,
   normalizeKey,
@@ -33,17 +34,30 @@ import {
   renderRecall,
   resolveDirs,
   setStatus,
+  syncIndexFile,
   writeEntryFile,
 } from './notebook-core.js'
 
 export const name = 'memory-notebook'
 
+/** `systemPrompt` and `tools` are required; `tokenMeter` is optional and used only for the hint. */
 export const inject = ['systemPrompt', 'tools']
 
 const SECTION_NAME = 'memory-notebook:index'
 const SECTION_ORDER = 4100
 const CONTEXT_NAME = 'memory-notebook:recall'
 const CONTEXT_ORDER = 4101
+const HINT_NAME = 'memory-notebook:capture-hint'
+const HINT_ORDER = 4102
+
+const CAPTURE_HINT =
+  '<memory-capture-hint>\n' +
+  'This conversation is close to being compacted, and a summary will not keep everything. ' +
+  'If this session produced something that was hard to work out and would be needed again — ' +
+  'a trap, a correction, a mechanism that only became clear after a failure — write it to the ' +
+  'notebook with `memory_write` now. One entry, with the evidence that proves it. If nothing ' +
+  'qualifies, ignore this.\n' +
+  '</memory-capture-hint>'
 
 /**
  * The policy ships with the plugin. It is seeded into a notebook that exists but carries none —
@@ -70,6 +84,8 @@ const DEFAULTS = {
   minRecallHits: 2,
   minQueryChars: 6,
   skipAcknowledgements: true,
+  /** Fraction of the context window at which the capture hint appears. 0 disables the hint. */
+  captureHintRatio: 0.6,
 }
 
 /** Build a registry-ready definition from canonical JSON Schemas. */
@@ -110,6 +126,8 @@ export function apply(ctx, config) {
   const recallBySession = new Map()
   /** Entries already injected in a session; re-injecting them only spends tokens. */
   const seenBySession = new Map()
+  /** Sessions that already received the capture hint; it is once per session by design. */
+  const hintedSessions = new Set()
 
   const seenFor = (sessionId) => {
     let seen = seenBySession.get(sessionId)
@@ -132,6 +150,7 @@ export function apply(ctx, config) {
   ctx.on('session/disposed', (session) => {
     const sessionId = session?.id
     if (sessionId === undefined) return
+    hintedSessions.delete(sessionId)
     queryBySession.delete(sessionId)
     recallBySession.delete(sessionId)
     seenBySession.delete(sessionId)
@@ -152,6 +171,22 @@ export function apply(ctx, config) {
     }
   }
 
+  // --- rebuild the index from the directory, once per directory per process ---
+  // The index is derived data. A file deleted outside the plugin, or one written by another tool,
+  // leaves it describing a directory that no longer exists — and an entry with no line is invisible,
+  // because the injected index never names it. Once is enough: every plugin write keeps it in step.
+  const syncedDirs = new Set()
+  const syncIndexOnce = (cwd) => {
+    const dir = resolveDirs(cfg, cwd)[0]
+    if (dir === undefined || syncedDirs.has(dir)) return
+    syncedDirs.add(dir)
+    try {
+      syncIndexFile(dir)
+    } catch {
+      /* a read-only notebook is not an error */
+    }
+  }
+
   // --- the resident index: absent entirely when the notebook is empty ---------
   if (cfg.showIndex) {
     ctx.systemPrompt.section({
@@ -160,6 +195,7 @@ export function apply(ctx, config) {
       text: (context) => {
         const cwd = cwdOf(context)
         seedPolicyOnce(cwd)
+        syncIndexOnce(cwd)
         return buildIndex(loadNotebook(cfg, cwd), cfg)
       },
     })
@@ -193,6 +229,37 @@ export function apply(ctx, config) {
         for (const hit of picked) seen.add(hit.entry.key)
         recallBySession.set(sessionId, { query, text })
         return text
+      },
+    })
+  }
+
+  // --- capture hint: once per session, as compaction approaches ---------------
+  // Capture and extraction are one act here: the model must decide, mid-conversation, that
+  // something is worth keeping. That is the most expensive possible moment to ask, so the plugin
+  // asks once, at the last moment where it still matters — before the summary eats the session.
+  // It is a hint, not a capture: nothing is written on the model's behalf.
+  if (cfg.captureHintRatio > 0) {
+    ctx.systemPrompt.context({
+      name: HINT_NAME,
+      order: HINT_ORDER,
+      text: (context) => {
+        const sessionId = sessionIdOf(context)
+        if (sessionId === undefined || hintedSessions.has(sessionId)) return ''
+        const meter = ctx.get('tokenMeter')
+        const session = context?.agent?.session
+        if (meter === undefined || session === undefined) return ''
+        let pressure
+        try {
+          pressure = meter.contextPressure(session)
+        } catch {
+          return ''
+        }
+        const used = pressure?.pressureTokens
+        const window = pressure?.contextWindow
+        if (typeof used !== 'number' || typeof window !== 'number' || window <= 0) return ''
+        if (used / window < cfg.captureHintRatio) return ''
+        hintedSessions.add(sessionId)
+        return CAPTURE_HINT
       },
     })
   }
@@ -336,6 +403,25 @@ export function apply(ctx, config) {
         if (title.length === 0) throw new Error('a memory needs a title')
         if (evidence.length === 0) throw new Error('a memory needs evidence: the command or error that proves it')
         const status = args.status === 'verified' ? 'verified' : 'candidate'
+
+        // Write-time rejection: an index that is truncated is worse than one that is full. The
+        // entries past the cut are never injected, so they may as well not exist, and nothing
+        // reports that they were dropped. Refuse the write and say how to make room; the fact is
+        // still in the conversation, so nothing is lost by waiting.
+        const existing = entriesFor(exec)
+        const file = `${key}.md`
+        if (!existing.some((entry) => entry.file === file)) {
+          const verdict = indexBudgetVerdict(existing, cfg, file)
+          if (!verdict.ok) {
+            throw new Error(
+              `the index is full: ${verdict.current} of ${verdict.budget} characters now, ` +
+                `${verdict.after} with "${file}". Nothing was written. Retire or merge an entry ` +
+                `first — memory_verify with status "disputed" frees a line, or fold two entries into ` +
+                `one with memory_write — then write this again.`,
+            )
+          }
+        }
+
         const created = writeEntryFile(dirs[0], {
           key,
           title,
