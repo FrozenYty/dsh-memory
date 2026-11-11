@@ -291,7 +291,27 @@ function isWholeChineseWord(phrase) {
  * The cap matters: `tls` appears in the trigger, the name, the title and the body. Counting all
  * four would let one common word clear any floor.
  */
-export function scoreEntry(entry, queryTokens) {
+/**
+ * How many entries claim each token as a strong signal — filename, title, or trigger.
+ *
+ * A word only one entry claims identifies that entry, exactly as a filename does, and earns the
+ * second hit. A word three entries claim does not. This is deliberately not IDF: the question is
+ * whether a term *distinguishes*, not how rare it is, and the answer converges on "no" by itself as
+ * a notebook grows, so no weight needs maintaining.
+ */
+export function strongSignalRarity(entries) {
+  const counts = new Map()
+  for (const entry of entries) {
+    const tokens = new Set()
+    for (const token of tokenize(entry.key.replace(/-/g, ' '))) tokens.add(token)
+    for (const token of tokenize(entry.title ?? '')) tokens.add(token)
+    for (const phrase of entry.triggers ?? []) for (const token of tokenize(phrase)) tokens.add(token)
+    for (const token of tokens) counts.set(token, (counts.get(token) ?? 0) + 1)
+  }
+  return counts
+}
+
+export function scoreEntry(entry, queryTokens, rarity) {
   const nameTokens = tokenize(entry.key.replace(/-/g, ' '))
   const titleTokens = tokenize(entry.title)
   const bodyTokens = tokenize(entry.body.slice(0, 4000))
@@ -318,8 +338,12 @@ export function scoreEntry(entry, queryTokens) {
       const [token] = phraseTokens
       const identifies = tokenMatches(nameTokens, token)
       const chineseWord = isWholeChineseWord(phrase)
+      // A word only this entry claims identifies it just as a filename does, so it also earns the
+      // second hit. Without this, "需要设置 proxy 吗" matched `proxy` — its only signal, and one that
+      // points at exactly one entry — and stopped one hit short of the floor.
+      const unique = rarity !== undefined && rarity.get(token) === 1
       score += 5
-      hits += identifies || chineseWord ? 2 : 1
+      hits += identifies || chineseWord || unique ? 2 : 1
     } else {
       score += 7
       hits += phraseTokens.size
@@ -374,16 +398,21 @@ export function extractQuery(messages) {
 export function pickHits(entries, query, config) {
   const queryTokens = tokenize(query)
   if (queryTokens.size === 0) return []
+  const rarity = strongSignalRarity(entries)
   const hits = []
   for (const entry of entries) {
     if (entry.status === 'disputed') continue
-    const scored = scoreEntry(entry, queryTokens)
+    const scored = scoreEntry(entry, queryTokens, rarity)
     if (!scored.strong) continue
     if (scored.hits < config.minRecallHits) continue
     if (scored.score < config.minRecallScore) continue
-    hits.push({ entry, score: scored.score })
+    hits.push({ entry, score: scored.score, hits: scored.hits })
   }
-  hits.sort((a, b) => b.score - a.score || b.entry.mtimeMs - a.entry.mtimeMs)
+  // More matched evidence wins a tie. Two entries can reach the same score by different routes —
+  // a query about a camera failure scored the camera entry and the sandbox-pipe entry equally,
+  // because "access denied" appears in both; the camera entry matched six terms to its four, and
+  // recency was deciding which one the model saw.
+  hits.sort((a, b) => b.score - a.score || b.hits - a.hits || b.entry.mtimeMs - a.entry.mtimeMs)
   return hits.slice(0, Math.max(1, Math.floor(config.maxRecall)))
 }
 

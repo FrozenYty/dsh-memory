@@ -150,6 +150,15 @@ is what keeps one turn from paying for recall on every step.
   it accumulates: a long entry that quoted the sentence "今天天气怎么样" collected six body hits from
   that sentence and recalled on nothing but coincidence. An entry's subject is what its name, title
   and triggers say it is; the body explains, it does not identify.
+- **A word only one entry claims counts as two hits.** This is the same rule as the filename, applied
+  to vocabulary: a term that identifies exactly one entry identifies it wherever the term is written.
+  It is not IDF — the question is whether a term *distinguishes*, not how rare it is — and it needs no
+  maintenance, because a term stops being unique the moment a second entry wants it. The rule
+  converges: at twenty-three entries the real notebook has eighty shared terms and no longer grants a
+  lone `readme`.
+- **Ties break on evidence count, not recency.** A camera question scored the camera entry and the
+  sandbox-pipe entry equally, because "access denied" appears in both bodies; the camera entry matched
+  six terms to four, and recency was deciding what the model saw.
 - **The cap is two.** `tls` appears in the trigger, the name, the title and the body; counting every
   field would let one common word clear any floor.
 

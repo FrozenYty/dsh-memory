@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "note": "Hand-written judgements over the fixture notebook. onTopic: the first hit must be `expect`. offTopic: nothing may be recalled. These are assertions, not a statistical sample — a change that flips any single case fails the run and is reviewed by hand.",
+  "onTopic": [
+    { "query": "github 连不上怎么办", "expect": "github-blocked-context7-direct" },
+    { "query": "代理端口多少", "expect": "github-blocked-context7-direct" },
+    { "query": "github api times out but ssh works", "expect": "github-blocked-context7-direct" },
+    { "query": "需要设置 proxy 吗", "expect": "github-blocked-context7-direct" },
+
+    { "query": "写入被拒绝访问", "expect": "low-integrity-label-writes" },
+    { "query": "目录权限标签 icacls", "expect": "low-integrity-label-writes" },
+    { "query": "writes need a low integrity label", "expect": "low-integrity-label-writes" },
+    { "query": "完整性标签怎么设", "expect": "low-integrity-label-writes" },
+
+    { "query": "mcp 挂了", "expect": "mcp-mounting-lifecycle" },
+    { "query": "mcp 工具消失了", "expect": "mcp-mounting-lifecycle" },
+    { "query": "the mcp server will not mount", "expect": "mcp-mounting-lifecycle" },
+    { "query": "服务器挂不上 转义", "expect": "mcp-mounting-lifecycle" },
+
+    { "query": "技能从目录里消失了", "expect": "skill-frontmatter-yaml" },
+    { "query": "skill 不见了", "expect": "skill-frontmatter-yaml" },
+    { "query": "my skill disappeared from the catalog", "expect": "skill-frontmatter-yaml" },
+    { "query": "frontmatter 描述有冒号", "expect": "skill-frontmatter-yaml" },
+
+    { "query": "相机打不开", "expect": "usb-camera-arrival-facts" },
+    { "query": "白平衡不对", "expect": "usb-camera-arrival-facts" },
+    { "query": "camera capture fails with access denied", "expect": "usb-camera-arrival-facts" },
+    { "query": "曝光太暗 黑帧", "expect": "usb-camera-arrival-facts" },
+
+    { "query": "插件装不上 找不到包", "expect": "dsh-local-plugin-cannot-import-dsh-packages" },
+    { "query": "本地插件 import 失败", "expect": "dsh-local-plugin-cannot-import-dsh-packages" },
+    { "query": "ERR_MODULE_NOT_FOUND 依赖", "expect": "dsh-local-plugin-cannot-import-dsh-packages" },
+    { "query": "linked bundle cannot import", "expect": "dsh-local-plugin-cannot-import-dsh-packages" },
+
+    { "query": "改了插件代码没生效", "expect": "dsh-plugin-reload-next-turn" },
+    { "query": "插件改动要重启吗", "expect": "dsh-plugin-reload-next-turn" },
+    { "query": "hot reload does not pick up my change", "expect": "dsh-plugin-reload-next-turn" },
+    { "query": "HMR 没反应", "expect": "dsh-plugin-reload-next-turn" },
+
+    { "query": "发给别人的路径怎么写", "expect": "forwardable-text-carries-no-local-paths" },
+    { "query": "消息里能用绝对路径吗", "expect": "forwardable-text-carries-no-local-paths" },
+    { "query": "absolute path in a shared document", "expect": "forwardable-text-carries-no-local-paths" },
+    { "query": "路径规则 盘符", "expect": "forwardable-text-carries-no-local-paths" },
+
+    { "query": "git push 管道报错", "expect": "git-push-piped-fails-in-sandbox" },
+    { "query": "沙箱里 push 失败", "expect": "git-push-piped-fails-in-sandbox" },
+    { "query": "piping a native command fails in the sandbox", "expect": "git-push-piped-fails-in-sandbox" },
+    { "query": "ResourceUnavailable 命名管道", "expect": "git-push-piped-fails-in-sandbox" },
+
+    { "query": "贡献者列表怎么去掉", "expect": "github-repo-operations" },
+    { "query": "保护分支推不上去", "expect": "github-repo-operations" },
+    { "query": "GH006 protected branch", "expect": "github-repo-operations" },
+    { "query": "强制推送 重写历史", "expect": "github-repo-operations" },
+
+    { "query": "curl 下载失败证书错误", "expect": "https-only-openssl-tls" },
+    { "query": "tls 握手失败", "expect": "https-only-openssl-tls" },
+    { "query": "schannel SEC_E_NO_CREDENTIALS", "expect": "https-only-openssl-tls" },
+    { "query": "只有 openssl 能过代理", "expect": "https-only-openssl-tls" },
+
+    { "query": "加了文件忘了更新索引", "expect": "register-new-things-everywhere" },
+    { "query": "清单漏了", "expect": "register-new-things-everywhere" },
+    { "query": "derived registry went stale", "expect": "register-new-things-everywhere" },
+    { "query": "更新 README 的计数", "expect": "register-new-things-everywhere" },
+
+    { "query": "工具返回 undefined 报错", "expect": "tool-output-must-be-lossless-json" },
+    { "query": "lossless json 错误", "expect": "tool-output-must-be-lossless-json" },
+    { "query": "tool returned invalid output", "expect": "tool-output-must-be-lossless-json" },
+    { "query": "spawn_member 返回失败", "expect": "tool-output-must-be-lossless-json" }
+  ],
+  "offTopic": [
+    "今天天气怎么样",
+    "帮我看看这段代码",
+    "这个函数什么意思",
+    "进度怎么样了",
+    "写个排序算法",
+    "refactor this module",
+    "优化一下性能",
+    "这个变量命名不好",
+    "把这段抽成函数",
+    "类型定义在哪",
+    "check the config",
+    "restart the service",
+    "the path is wrong",
+    "下载一个文件",
+    "描述怎么写",
+    "枚举一下",
+    "清单在哪",
+    "表格怎么画",
+    "计数不对",
+    "服务器重启一下",
+    "路径怎么拼",
+    "权限设置一下",
+    "错误日志在哪",
+    "这是我的本地环境"
+  ]
+}

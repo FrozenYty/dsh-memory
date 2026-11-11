@@ -7,6 +7,32 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.10.0] — 2026-11-11
+
+### Added
+
+- **A recall judgement set and the tool to run it.** `test/qrels.json` holds 52 statements about what
+  the notebook should recall and 24 queries it must ignore, and `scripts/eval-recall.mjs` runs them,
+  reporting per-entry reachability and a Wilson interval on each rate. It is an assertion set, not a
+  benchmark: a single flipped case fails the run. Without this, a change could move the totals by one
+  and be indistinguishable from noise.
+- **A strong-signal rarity rule.** A single-word trigger that only one entry claims now counts as two
+  hits, exactly as a filename does. "需要设置 proxy 吗" matched `proxy` — its only signal, pointing at
+  exactly one entry — and stopped one hit short of the floor. The rule converges by itself: a term
+  stops being unique the moment a second entry wants it, so nothing needs maintaining as the notebook
+  grows.
+- **Tie-break by evidence count.** Two entries can reach the same score by different routes; a camera
+  question scored the camera entry and the sandbox-pipe entry equally because "access denied" appears
+  in both, and recency decided which one the model saw. More matched evidence now wins.
+
+### Changed
+
+- The fixture notebook grew from 5 entries to 13. A five-entry fixture cannot model false positives
+  that appear at twenty, and its recall rate has a confidence interval wide enough to hide a
+  regression.
+- The off-topic list in `test-core.mjs` now reads `test/qrels.json`, so the unit tests and the
+  evaluation cannot drift apart.
+
 ## [0.9.0] — 2026-11-11
 
 ### Added
@@ -200,7 +226,8 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory-notebook/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/FrozenYty/dsh-memory-notebook/compare/v0.10.0...HEAD
+[0.10.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.10.0
 [0.9.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.9.0
 [0.8.1]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.8.1
 [0.8.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.8.0

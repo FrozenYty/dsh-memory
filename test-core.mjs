@@ -7,7 +7,7 @@
  *
  *   node test-core.mjs
  */
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -25,6 +25,7 @@ import {
   scanDir,
   scoreEntry,
   setStatus,
+  strongSignalRarity,
   syncIndexFile,
   tokenize,
   writeEntryFile,
@@ -67,7 +68,16 @@ function names(hits) {
 console.log('\n[1] notebook discovery and index')
 // ---------------------------------------------------------------------------
 const entries = loadNotebook(config, FIXTURE_ROOT)
-check('the fixture notebook is discovered', entries.length === 5, `found ${entries.length}`)
+// Asserted against the directory rather than a literal, so widening the fixture does not need this
+// line edited — and so a file that stops being discovered is still caught.
+const fixtureFiles = readdirSync(FIXTURE_ROOT + '/notebook').filter(
+  (name) => name.endsWith('.md') && name !== 'INDEX.md',
+)
+check(
+  'the fixture notebook is discovered',
+  entries.length === fixtureFiles.length && entries.length >= 10,
+  `found ${entries.length} of ${fixtureFiles.length}`,
+)
 check(
   'all fixture entries are present',
   entries.some((entry) => entry.key === 'mcp-mounting-lifecycle'),
@@ -361,26 +371,11 @@ check('the shipped template has an Evidence line', shippedTemplate.includes('Evi
 // ---------------------------------------------------------------------------
 console.log('\n[10] recall quality: false-positive budget')
 // ---------------------------------------------------------------------------
-// Ordinary work talk that shares vocabulary with the fixtures but is not about any of them.
-// This is the budget that matters: recall improvements must not be paid for here. Each query
-// below has at least one word that appears somewhere in the fixture notebook.
-const offTopic = [
-  '今天天气怎么样',
-  '帮我看看这段代码',
-  '这个函数什么意思',
-  '进度怎么样了',
-  '写个排序算法',
-  'refactor this module',
-  '优化一下性能',
-  '这个变量命名不好',
-  '把这段抽成函数',
-  'check the config',
-  'restart the service',
-  'the path is wrong',
-  '下载一个文件',
-  '描述怎么写',
-  '枚举一下',
-]
+// Ordinary work talk that shares vocabulary with the fixtures but is not about any of them. This is
+// the budget that matters: recall improvements must not be paid for here. The list lives in
+// test/qrels.json, shared with scripts/eval-recall.mjs, so the two suites cannot drift apart.
+const qrels = JSON.parse(readFileSync(FIXTURE_ROOT + '/../qrels.json', 'utf8'))
+const offTopic = qrels.offTopic
 let falsePositives = 0
 for (const query of offTopic) {
   const hits = pickHits(entries, query, config)
@@ -444,6 +439,30 @@ check('a two-character Chinese trigger reaches the floor alone', twoChar.hits >=
 const singleChar = { ...chineseWordEntry, triggers: ['好'] }
 const oneChar = scoreEntry(singleChar, tokenize('好的'))
 check('a single Chinese character does not', oneChar.hits < 2, JSON.stringify(oneChar))
+
+// A word only one entry claims identifies that entry, so it earns the second hit a filename would.
+// A word several entries share does not — which is what keeps the floor meaningful as the notebook
+// grows, since any term stops being unique once a second entry wants it.
+const soleClaim = { ...chineseWordEntry, key: 'only-one', file: 'only-one.md', title: 'Only one', triggers: ['solo'] }
+const sharedA = { ...chineseWordEntry, key: 'shared-a', file: 'shared-a.md', title: 'A', triggers: ['common'] }
+const sharedB = { ...chineseWordEntry, key: 'shared-b', file: 'shared-b.md', title: 'B', triggers: ['common'] }
+const pairRarity = strongSignalRarity([soleClaim, sharedA, sharedB])
+check(
+  'a word only one entry claims counts two hits',
+  scoreEntry(soleClaim, tokenize('solo'), pairRarity).hits >= 2,
+  JSON.stringify(scoreEntry(soleClaim, tokenize('solo'), pairRarity)),
+)
+check(
+  'a word two entries claim counts one',
+  scoreEntry(sharedA, tokenize('common'), pairRarity).hits === 1,
+  JSON.stringify(scoreEntry(sharedA, tokenize('common'), pairRarity)),
+)
+check(
+  'the rule needs the notebook to decide',
+  scoreEntry(soleClaim, tokenize('solo')).hits === 1,
+  'without rarity a lone word must not reach the floor',
+)
+check('rarity is counted across a real notebook', strongSignalRarity(entries).size > 0)
 
 // Body words alone never qualify. A long entry that quotes a sentence collected six body hits from
 // that sentence and recalled on nothing but coincidence; body text explains, it does not identify.

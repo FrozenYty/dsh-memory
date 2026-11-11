@@ -15,7 +15,10 @@ const MAX_SHOWN = 80;
 
 const RULES = [
   { label: 'Windows drive path', pattern: /(?<![A-Za-z0-9])[A-Za-z]:[\\/][^\s]/ },
-  { label: 'UNC share', pattern: /\\\\[A-Za-z0-9._-]+\\/ },
+  // A UNC share names a host, and a host does not begin with a dot. Without that requirement the
+  // device namespace `\\.\pipe\...` reads as a share called ".", and every quoted Windows error
+  // message about a named pipe fails the check.
+  { label: 'UNC share', pattern: /\\\\[A-Za-z0-9_-][A-Za-z0-9._-]*\\/ },
   { label: 'POSIX home path', pattern: /\/(?:Users|home)\/[^/\s]+\// },
   { label: 'conda install path', pattern: /anaconda3?[\\/]/i },
 ];

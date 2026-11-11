@@ -80,6 +80,7 @@ Every job below blocks the merge. The list grows; the rule does not.
 |---|---|---|
 | Syntax | `node --check index.js && node --check notebook-core.js` | read the reported line |
 | Tests | `node test-core.mjs` | write the failing case first |
+| Recall | `node scripts/eval-recall.mjs` | a flipped case is a result: fix the rule, or edit `test/qrels.json` and say why |
 | Paths | `node scripts/check-paths.mjs` | write it relative to the repository root |
 | Docs | `node scripts/check-docs.mjs` | list the ADR, fix the switcher, fix the link |
 | Evidence | `node scripts/check-evidence.mjs --dir test/fixtures/notebook` | add the missing `Evidence:` line |
