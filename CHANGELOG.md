@@ -7,6 +7,35 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.13.3] — 2026-11-11
+
+### Changed
+
+- **The plugin description is now one line you would actually say.** It was forty-eight characters of
+  explanation — a shared notebook, plain markdown, it can see them, open them, write back. All true,
+  all useful in a README, none of it what a plugin page is for. It is now **你的经验，它看得见。** /
+  **Your experience, visible to the agent.** It names what the user has, not what the software does.
+  It says *can see*, not *remembers*, because measured recall is about one question in five on fresh
+  phrasing and the stronger verb would be a claim the data contradicts. The honest numbers stay on the
+  README's first screen: a card exists to earn a click, the honesty belongs inside.
+- **Both READMEs now open with the same line**, followed by one clause saying what the thing is — a
+  slogan with no noun leaves a reader unsure whether this is a memory system or a note-taking app.
+
+### Added
+
+- **Three consistency checks, replacing three things that were maintained by memory.** A version bump
+  and its changelog entry are one change; a locale key exists in both languages or neither; every key
+  in `index.js` `DEFAULTS` appears in both README tables. None of the three was visible to any check
+  before, and all three had already gone wrong at least once — the version in this very release, the
+  locale files at v0.13.2, and the configuration table whenever a default changed. Each was verified
+  to fail, not only to pass: an unrecorded `9.9.9`, a key added to one locale, and a deleted table row
+  each produce a named failure.
+- **A version consistency check.** `scripts/check-docs.mjs` requires the version in `package.json` to
+  have a matching `## [x.y.z]` section in `CHANGELOG.md`. This release is why: the tag was pushed
+  before the version bump and the changelog entry, so `v0.13.3` pointed at a commit that still said
+  `0.13.2` in `package.json`. Nothing noticed — not CI, not the tests, and not me until the tag had
+  already been published.
+
 ## [0.13.2] — 2026-11-11
 
 ### Changed
