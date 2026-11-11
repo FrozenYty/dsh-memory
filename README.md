@@ -122,11 +122,12 @@ characters, and an entry is never injected twice in one session.
 node test-core.mjs        # 46 checks, no dependencies
 ```
 
-The suite runs against this project's real notebook and covers: discovery and `INDEX.md` ordering,
-index shape and budget, empty-notebook behaviour, Latin and CJK tokenising, the acknowledgement gate,
-English and Chinese recall, budget clamping that preserves the `Evidence:` line, trust-status
-transitions, disputed entries disappearing from both index and recall, and malformed-entry
-tolerance.
+The suite runs against a five-entry fixture notebook committed with the repository, so it behaves
+the same locally and in CI. It covers: discovery and `INDEX.md` ordering, index shape and budget,
+empty-notebook behaviour, Latin and CJK tokenising, the acknowledgement gate, English and Chinese
+recall, whole-phrase trigger matching, budget clamping that preserves the `Evidence:` line,
+trust-status transitions, disputed entries disappearing from both index and recall, and
+malformed-entry tolerance.
 
 ## Limits this design accepts
 

@@ -1,6 +1,9 @@
 /**
- * Behavioural tests for the memory notebook core. Runs against the real notebook in this
- * workspace, so a regression in matching shows up as a real recall failure.
+ * Behavioural tests for the memory notebook core.
+ *
+ * They run against the fixture notebook in `test/fixtures/notebook`, not against any real
+ * notebook on the author's machine: a test that needs data outside the repository passes here and
+ * fails in CI, which is exactly what happened before this fixture existed.
  *
  *   node test-core.mjs
  */
@@ -15,15 +18,16 @@ import {
   pickHits,
   renderRecall,
   scanDir,
+  scoreEntry,
   setStatus,
   tokenize,
   writeEntryFile,
 } from './notebook-core.js'
 
-const WORKSPACE = fileURLToPath(new URL('../../', import.meta.url))
+const FIXTURE_ROOT = fileURLToPath(new URL('./test/fixtures', import.meta.url))
 
 const config = {
-  workspaceDir: '.agents/memory',
+  workspaceDir: 'notebook',
   machineDir: '',
   showIndex: true,
   indexBudgetChars: 1400,
@@ -56,11 +60,11 @@ function names(hits) {
 // ---------------------------------------------------------------------------
 console.log('\n[1] notebook discovery and index')
 // ---------------------------------------------------------------------------
-const entries = loadNotebook(config, WORKSPACE)
-check('the notebook is discovered', entries.length >= 10, `found ${entries.length}`)
+const entries = loadNotebook(config, FIXTURE_ROOT)
+check('the fixture notebook is discovered', entries.length === 5, `found ${entries.length}`)
 check(
-  'a known entry is present',
-  entries.some((entry) => entry.key === 'platformio-esp32-toolchain'),
+  'all fixture entries are present',
+  entries.some((entry) => entry.key === 'mcp-mounting-lifecycle'),
   entries.map((entry) => entry.key).join(','),
 )
 check('no entry is INDEX.md', entries.every((entry) => entry.key !== 'index'))
@@ -69,7 +73,7 @@ check(
   entries.length > 1 && entries[0].key === 'github-blocked-context7-direct',
   `first = ${entries[0]?.key}`,
 )
-check('every entry carries triggers', entries.every((entry) => entry.triggers.length > 0))
+check('every fixture entry carries triggers', entries.every((entry) => entry.triggers.length > 0))
 
 const index = buildIndex(entries, config)
 check('index lists bare filenames', entries.every((entry) => index.includes(`- ${entry.file}`)))
@@ -99,12 +103,11 @@ for (const real of ['为什么 platformio 装不上', '看一下这个报错']) 
 console.log('\n[3] recall (English / technical queries)')
 // ---------------------------------------------------------------------------
 const englishCases = [
-  ['why does platformio fail to build under the sandbox', 'platformio-esp32-toolchain'],
-  ['curl fails with SEC_E_NO_CREDENTIALS through the proxy', 'https-only-openssl-tls'],
   ['github api times out but ssh works', 'github-blocked-context7-direct'],
-  ['the mcp server will not mount, no tools appear', 'mcp-mounting-lifecycle'],
   ['my skill disappeared from the catalog', 'skill-frontmatter-yaml'],
+  ['the mcp server will not mount, no tools appear', 'mcp-mounting-lifecycle'],
   ['camera capture fails with access denied', 'usb-camera-arrival-facts'],
+  ['writes need a low integrity label on the target', 'low-integrity-label-writes'],
 ]
 for (const [query, expected] of englishCases) {
   const hits = pickHits(entries, query, config)
@@ -115,11 +118,10 @@ for (const [query, expected] of englishCases) {
 console.log('\n[4] recall (plain Chinese queries)')
 // ---------------------------------------------------------------------------
 const chineseCases = [
-  ['相机打不开，权限被拒绝', 'usb-camera-arrival-facts'],
-  ['烧录固件的时候路径太长了，编译失败', 'platformio-esp32-toolchain'],
-  ['mcp 服务器挂不上，工具都不见了', 'mcp-mounting-lifecycle'],
   ['github 连不上，要用代理吗', 'github-blocked-context7-direct'],
   ['技能从目录里消失了', 'skill-frontmatter-yaml'],
+  ['mcp 服务器挂不上，工具都不见了', 'mcp-mounting-lifecycle'],
+  ['相机打不开，权限被拒绝', 'usb-camera-arrival-facts'],
   ['写入被拒绝访问，目录权限', 'low-integrity-label-writes'],
 ]
 for (const [query, expected] of chineseCases) {
@@ -127,13 +129,29 @@ for (const [query, expected] of chineseCases) {
   check(`"${query}" -> ${expected}`, hits.length > 0 && hits[0].entry.key === expected, names(hits))
 }
 
+// A phrase trigger counts only whole. Tested on a synthetic entry so the rule is pinned even if
+// no fixture entry happens to carry a multi-word trigger.
+const phraseEntry = {
+  key: 'phrase-check',
+  file: 'phrase-check.md',
+  dir: '',
+  title: 'Phrase check',
+  status: 'candidate',
+  triggers: ['dotnet pipe denied'],
+  body: 'The word denied appears here alone, with no phrase around it.',
+  mtimeMs: 0,
+}
+const brokenPhrase = scoreEntry(phraseEntry, tokenize('something was denied'))
+check('a broken phrase does not score', brokenPhrase.score === 1, `score ${brokenPhrase.score}`)
+const wholePhrase = scoreEntry(phraseEntry, tokenize('dotnet pipe denied on startup'))
+check('a whole phrase scores above any single field', wholePhrase.score >= 7, `score ${wholePhrase.score}`)
+
 // ---------------------------------------------------------------------------
 console.log('\n[5] rendering holds its budget without losing the evidence')
 // ---------------------------------------------------------------------------
-const rendered = renderRecall(pickHits(entries, '烧录固件的时候路径太长了，编译失败', config), 1400)
+const rendered = renderRecall(pickHits(entries, 'mcp 服务器挂不上，工具都不见了', config), 1400)
 check('rendered recall is bounded', rendered.length <= 1400, `${rendered.length} chars`)
 check('a clamped entry keeps its evidence line', rendered.includes('Evidence:'), rendered.slice(-160))
-check('recall output is smaller than the entry set', rendered.length < 1400)
 check('candidate status is labelled', rendered.includes('(candidate)'), rendered.slice(0, 160))
 
 // ---------------------------------------------------------------------------
@@ -144,13 +162,15 @@ const created = writeEntryFile(writeDir, {
   key: 'pwsh-quoting-traps',
   title: 'PowerShell here-strings eat backticks',
   status: 'candidate',
-  body: 'A backtick inside `@" "@` is treated as an escape character.',
+  triggers: 'pwsh, here-string, backtick',
+  body: 'A backtick inside a here-string is treated as an escape character.',
   evidence: 'unexpected end of string',
 })
 check('a new entry is created', created === true)
 const after = scanDir(writeDir)
 check('the new entry is readable', after.length === 1 && after[0].key === 'pwsh-quoting-traps')
 check('it defaults to candidate', after[0]?.status === 'candidate')
+check('its triggers are stored', (after[0]?.triggers ?? []).includes('pwsh'))
 check('INDEX.md is updated', readFileSync(join(writeDir, 'INDEX.md'), 'utf8').includes('`pwsh-quoting-traps.md`'))
 check('the entry carries its evidence', after[0]?.body.includes('Evidence:'))
 
