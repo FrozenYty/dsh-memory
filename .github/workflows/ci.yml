@@ -37,6 +37,9 @@ jobs:
       - name: Evidence completeness
         run: node scripts/check-evidence.mjs --dir test/fixtures/notebook
 
+      - name: Index agrees with the directory
+        run: node scripts/check-index.mjs --dir test/fixtures/notebook
+
       - name: No tool credited as a co-author
         if: github.event_name == 'pull_request'
         run: node scripts/check-commit-messages.mjs --range "origin/${{ github.base_ref }}..HEAD"

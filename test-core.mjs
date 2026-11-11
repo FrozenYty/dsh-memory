@@ -16,6 +16,7 @@ import {
   auditEntries,
   buildIndex,
   ensurePolicyEntry,
+  indexDrift,
   loadNotebook,
   pickHits,
   renderRecall,
@@ -100,6 +101,24 @@ for (const ack of ['好', '好的。', 'continue', 'OK', '收到！']) {
 for (const real of ['为什么 platformio 装不上', '看一下这个报错']) {
   check(`"${real}" is a real request`, !ACK_PATTERN.test(real))
 }
+
+// Prefix tolerance: a query word matches a field word when one is the other's prefix and both
+// reach five characters. Below that floor it must be an exact match, or "env" would match every
+// "environment" and the field would stop discriminating.
+const stemEntry = {
+  key: 'toolchain-notes',
+  file: 'toolchain-notes.md',
+  dir: '',
+  title: 'Installation of the toolchain',
+  status: 'candidate',
+  triggers: [],
+  body: 'environment details',
+  mtimeMs: 0,
+}
+const prefixHit = scoreEntry(stemEntry, tokenize('install toolchain'))
+check('a five-character prefix matches a title word', prefixHit.score > 0 && prefixHit.hits === 2, JSON.stringify(prefixHit))
+const shortMiss = scoreEntry(stemEntry, tokenize('env'))
+check('a three-character word does not prefix-match', shortMiss.score === 0, JSON.stringify(shortMiss))
 
 // ---------------------------------------------------------------------------
 console.log('\n[3] recall (English / technical queries)')
@@ -214,7 +233,28 @@ check(
 )
 
 // ---------------------------------------------------------------------------
-console.log('\n[8] policy seeding')
+console.log('\n[8] index drift')
+// ---------------------------------------------------------------------------
+// Both directions: a file nobody listed is invisible, a listed file that is gone makes the index
+// lie. The fixture is consistent, so drift there must be empty.
+const fixtureDrift = indexDrift(FIXTURE_ROOT + '/notebook')
+check(
+  'the fixture index agrees with its directory',
+  fixtureDrift.unlisted.length === 0 && fixtureDrift.missing.length === 0,
+  JSON.stringify(fixtureDrift),
+)
+
+const driftDir = mkdtempSync(join(tmpdir(), 'mn-drift-'))
+writeFileSync(join(driftDir, 'listed.md'), '# listed\n', 'utf8')
+writeFileSync(join(driftDir, 'forgotten.md'), '# forgotten\n', 'utf8')
+writeFileSync(join(driftDir, 'INDEX.md'), '- `listed.md`\n- `deleted.md`\n', 'utf8')
+const drifted = indexDrift(driftDir)
+check('an unlisted file is reported', drifted.unlisted.length === 1 && drifted.unlisted[0] === 'forgotten.md', JSON.stringify(drifted.unlisted))
+check('a missing listed file is reported', drifted.missing.length === 1 && drifted.missing[0] === 'deleted.md', JSON.stringify(drifted.missing))
+check('the listed file is not reported', !drifted.unlisted.includes('listed.md') && !drifted.missing.includes('listed.md'))
+
+// ---------------------------------------------------------------------------
+console.log('\n[9] policy seeding')
 // ---------------------------------------------------------------------------
 // The policy ships with the plugin. A fresh install has no notebook entry for it, so the plugin
 // must be able to seed one — and must never overwrite a policy the user has edited.
@@ -264,14 +304,14 @@ check('the bundled policy template ships', shippedTemplate.length > 1000, `${shi
 check('the shipped template has an Evidence line', shippedTemplate.includes('Evidence:'))
 
 // ---------------------------------------------------------------------------
-console.log('\n[9] safety')
+console.log('\n[10] safety')
 // ---------------------------------------------------------------------------
 const readOnlyDir = mkdtempSync(join(tmpdir(), 'mn-ro-'))
 writeFileSync(join(readOnlyDir, 'broken.md'), '---\nstatus: candidate\n---\nno heading, no trouble\n', 'utf8')
 const broken = scanDir(readOnlyDir)
 check('an entry without a heading still loads', broken.length === 1 && broken[0].title === 'broken')
 
-for (const dir of [emptyDir, writeDir, readOnlyDir, writtenDir, seedRoot]) {
+for (const dir of [emptyDir, writeDir, readOnlyDir, writtenDir, seedRoot, driftDir]) {
   try {
     rmSync(dir, { recursive: true, force: true })
   } catch {
