@@ -314,6 +314,30 @@ export function renderRecall(hits, budget) {
 }
 
 // ---------------------------------------------------------------------------
+// hygiene
+// ---------------------------------------------------------------------------
+
+/**
+ * Audit entries for the two things a script can check without executing arbitrary notebook
+ * commands: whether a claim carries evidence at all, and whether the entry has been touched
+ * recently. Age is the honest proxy for "the command in Evidence may no longer hold" —
+ * running whatever a markdown file says is not a safe default, so the signal is staleness plus
+ * a human re-check, not automatic re-execution.
+ */
+export function auditEntries(entries, options = {}) {
+  const staleDays = options.staleDays ?? 90
+  const now = options.now ?? Date.now()
+  const staleMs = staleDays * 86_400_000
+  const missingEvidence = []
+  const stale = []
+  for (const entry of entries) {
+    if (!/Evidence:/.test(entry.body)) missingEvidence.push(entry)
+    if (now - entry.mtimeMs > staleMs) stale.push(entry)
+  }
+  return { total: entries.length, missingEvidence, stale, staleDays }
+}
+
+// ---------------------------------------------------------------------------
 // writing
 // ---------------------------------------------------------------------------
 
@@ -365,6 +389,9 @@ export function setStatus(dir, key, status) {
   const raw = readFileSync(path, 'utf8')
   const { meta, body } = splitFrontmatter(raw)
   meta.status = status
+  // Reviewing an entry is the moment its evidence was last confirmed, so the timestamp moves.
+  // Age is what the audit reports on; a status change that did not move it would mask staleness.
+  meta.updated = new Date().toISOString().slice(0, 10)
   const rebuilt = ['---', `status: ${status}`]
   for (const [k, v] of Object.entries(meta)) {
     if (k === 'status') continue

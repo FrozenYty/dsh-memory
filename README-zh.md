@@ -91,6 +91,7 @@ Evidence: `能证明这句话的原始命令或报错`
 | `memory_read` | 完整读一条。 |
 | `memory_write` | 新建或更新一条；`evidence` 必填。 |
 | `memory_verify` | 标为 `verified`，或退役为 `disputed`。 |
+| `memory_audit` | 列出没有 `Evidence:` 行的条目，以及长期未被触碰的条目。 |
 
 ## 为什么省
 
@@ -110,7 +111,8 @@ Evidence: `能证明这句话的原始命令或报错`
 ## 验证
 
 ```sh
-node test-core.mjs        # 46 项检查，零依赖
+node test-core.mjs        # 50 项检查，零依赖
+node scripts/check-evidence.mjs --dir .agents/memory   # 证据完整性与老化
 ```
 
 这套测试跑在随仓库提交的一份五条目 fixture notebook 上，所以本地和 CI 的行为一致。覆盖：条目

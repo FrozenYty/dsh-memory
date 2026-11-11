@@ -13,6 +13,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
   ACK_PATTERN,
+  auditEntries,
   buildIndex,
   loadNotebook,
   pickHits,
@@ -184,14 +185,42 @@ check(
 )
 
 // ---------------------------------------------------------------------------
-console.log('\n[7] safety')
+console.log('\n[7] evidence hygiene')
+// ---------------------------------------------------------------------------
+const audit = auditEntries(entries, { staleDays: 90 })
+check(
+  'an entry without an Evidence line is reported',
+  audit.missingEvidence.length === 1 && audit.missingEvidence[0].key === 'usb-camera-arrival-facts',
+  audit.missingEvidence.map((entry) => entry.key).join(',') || '(none)',
+)
+check('fresh fixtures are not stale', audit.stale.length === 0, `${audit.stale.length} stale`)
+
+const aged = auditEntries(entries, { staleDays: 1, now: Date.now() + 10 * 86_400_000 })
+check('aging is reported against the clock it is given', aged.stale.length === entries.length, `${aged.stale.length}`)
+
+const writtenDir = mkdtempSync(join(tmpdir(), 'mn-audit-'))
+writeEntryFile(writtenDir, {
+  key: 'has-evidence',
+  title: 'Has evidence',
+  status: 'candidate',
+  body: 'A claim.',
+  evidence: 'a command',
+})
+const cleanAudit = auditEntries(scanDir(writtenDir), { staleDays: 90 })
+check(
+  'a freshly written entry passes both checks',
+  cleanAudit.missingEvidence.length === 0 && cleanAudit.stale.length === 0,
+)
+
+// ---------------------------------------------------------------------------
+console.log('\n[8] safety')
 // ---------------------------------------------------------------------------
 const readOnlyDir = mkdtempSync(join(tmpdir(), 'mn-ro-'))
 writeFileSync(join(readOnlyDir, 'broken.md'), '---\nstatus: candidate\n---\nno heading, no trouble\n', 'utf8')
 const broken = scanDir(readOnlyDir)
 check('an entry without a heading still loads', broken.length === 1 && broken[0].title === 'broken')
 
-for (const dir of [emptyDir, writeDir, readOnlyDir]) {
+for (const dir of [emptyDir, writeDir, readOnlyDir, writtenDir]) {
   try {
     rmSync(dir, { recursive: true, force: true })
   } catch {
