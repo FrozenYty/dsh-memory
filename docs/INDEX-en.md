@@ -28,7 +28,7 @@ together. Read this before adding, moving or renaming a document.
 
 | Changing | Also change |
 |---|---|
-| A default in `index.js` | the configuration table in `README.md` **and** `README-zh.md` |
+| A default in `index.js` | the configuration table in `README.md` **and** `README-zh.md`; `scripts/check-docs.mjs` fails when a key is missing from either |
 | A tool name, argument or required field | the tools table in both READMEs, and `docs/architecture-en.md` |
 | The index or recall budget model | `docs/architecture-en.md` and the cost table in both READMEs |
 | Adding a behaviour with a non-obvious tradeoff | a new ADR, and its row in [adr/](#decision-records) below |
@@ -38,6 +38,7 @@ together. Read this before adding, moving or renaming a document.
 | The trigger-matching rule (weights, phrases, prefix) | `docs/architecture-en.md`, and the trigger note in both READMEs |
 | A recall judgement (what should match what) | `test/qrels.json` — a flipped case fails CI, so the edit is a reviewed decision, not a side effect |
 | A string the plugin page shows (`locale/*.json`) | both languages; `scripts/check-docs.mjs` fails when the key sets differ |
+| The version in `package.json` | a `## [x.y.z]` section in `CHANGELOG.md` — one change, and `check-docs` enforces it |
 
 ## Decision records
 

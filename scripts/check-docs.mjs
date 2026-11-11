@@ -4,6 +4,8 @@
 //   b) README.md and README-zh.md each carry a language switch to the other file
 //   c) every relative Markdown link in the READMEs and docs/*.md resolves to a file
 //   d) locale/*.json carry the same keys, and none of them is empty
+//   e) the version in package.json has a matching CHANGELOG section
+//   f) every key in index.js DEFAULTS is documented in both README tables
 //
 // Rules are reported together so one run shows every problem.
 
@@ -239,12 +241,73 @@ function checkLocales() {
   };
 }
 
+// A version bump and its changelog entry are one change, and neither is visible to any other check.
+// This exists because they came apart once: a tag was pushed before either, so the release pointed at
+// a commit whose package.json still carried the previous version. CI was green, the tests passed, and
+// the mismatch surfaced only by accident afterwards.
+function checkVersionRecorded() {
+  const pkgFile = path.join(repoRoot, 'package.json');
+  const changelogFile = path.join(repoRoot, 'CHANGELOG.md');
+  if (!existsSync(pkgFile) || !existsSync(changelogFile)) {
+    return { ok: true, summary: 'no package.json or CHANGELOG.md', details: [] };
+  }
+  let version;
+  try {
+    version = JSON.parse(readFileSync(pkgFile, 'utf8')).version;
+  } catch (error) {
+    return { ok: false, summary: 'package.json is not valid JSON', details: [error.message] };
+  }
+  if (typeof version !== 'string' || version.trim().length === 0) {
+    return { ok: false, summary: 'package.json declares no version', details: [] };
+  }
+  const escaped = version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const recorded = new RegExp(`^## \\[${escaped}\\]`, 'm').test(readFileSync(changelogFile, 'utf8'));
+  return {
+    ok: recorded,
+    summary: `package.json declares ${version}`,
+    details: recorded
+      ? []
+      : [`CHANGELOG.md has no "## [${version}]" section — a version bump and its entry are one change`],
+  };
+}
+
+// Every configuration key has to appear in both READMEs. A key that exists in the code and not in the
+// table is invisible until a user asks why their setting does nothing; one in the table and not the
+// code is a lie. `DEFAULTS` is module-private, so the source is read rather than imported — which also
+// keeps this check from executing the plugin.
+function checkConfigTable() {
+  const source = readText(path.join(repoRoot, 'index.js'));
+  if (source === null) return { ok: true, summary: 'no index.js', details: [] };
+  const block = source.match(/const DEFAULTS = \{([\s\S]*?)\n\}/);
+  if (block === null) return { ok: false, summary: 'no DEFAULTS block in index.js', details: [] };
+  const keys = [...block[1].matchAll(/^\s{2}([A-Za-z][A-Za-z0-9]*):/gm)].map((m) => m[1]);
+  if (keys.length === 0) return { ok: false, summary: 'DEFAULTS declares no keys', details: [] };
+
+  const details = [];
+  for (const name of ['README.md', 'README-zh.md']) {
+    const text = readText(path.join(repoRoot, name));
+    if (text === null) {
+      details.push(`${name} is missing`);
+      continue;
+    }
+    const listed = new Set([...text.matchAll(/^\|\s*`([A-Za-z][A-Za-z0-9]*)`\s*\|/gm)].map((m) => m[1]));
+    const absent = keys.filter((key) => !listed.has(key));
+    const invented = [...listed].filter((key) => !keys.includes(key));
+    if (absent.length > 0) details.push(`${name} does not document: ${absent.join(', ')}`);
+    if (invented.length > 0) details.push(`${name} documents keys that are not in DEFAULTS: ${invented.join(', ')}`);
+  }
+
+  return { ok: details.length === 0, summary: `${keys.length} configuration key(s)`, details };
+}
+
 function main() {
   const rules = [
     { label: 'a) ADR index', result: checkAdrIndex() },
     { label: 'b) language switch', result: checkLanguageSwitches() },
     { label: 'c) relative links', result: checkRelativeLinks() },
     { label: 'd) locale files agree', result: checkLocales() },
+    { label: 'e) version is recorded', result: checkVersionRecorded() },
+    { label: 'f) configuration is documented', result: checkConfigTable() },
   ];
 
   let passed = 0;

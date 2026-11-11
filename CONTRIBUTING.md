@@ -82,7 +82,7 @@ Every job below blocks the merge. The list grows; the rule does not.
 | Tests | `node test-core.mjs` | write the failing case first |
 | Recall | `node scripts/eval-recall.mjs` | a flipped case is a result: fix the rule, or edit `test/qrels.json` and say why |
 | Paths | `node scripts/check-paths.mjs` | write it relative to the repository root |
-| Docs | `node scripts/check-docs.mjs` | list the ADR, fix the switcher, fix the link, add the missing translation |
+| Docs | `node scripts/check-docs.mjs` | list the ADR, fix the switcher, fix the link, add the missing translation, record the version, document the key |
 | Evidence | `node scripts/check-evidence.mjs --dir test/fixtures/notebook` | add the missing `Evidence:` line |
 | Index | `node scripts/check-index.mjs --dir test/fixtures/notebook` | list the file, or remove the stale line |
 | Co-author | `node scripts/check-commit-messages.mjs --range <base>..HEAD` | remove the trailer |
