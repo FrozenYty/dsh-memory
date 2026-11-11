@@ -61,10 +61,14 @@ notebook:
 
 | Typed | What it pulled in |
 |---|---|
-| 证书考试过了 | the TLS entry — *证书* is also how you say "certificate" for an exam |
-| 笔记本屏幕有点暗 | the notebook policy — *笔记本* is also "laptop" |
-| 插件挺多的 | two plugin entries, from a remark about nothing |
+| an exam certificate was issued | the TLS entry — one word covers both senses |
+| the notebook is running hot | the notebook policy — "notebook" is also a laptop |
+| there are a lot of plugins | two plugin entries, from a remark about nothing |
 | **Ordinary talk sharing vocabulary** | **5/18 fired** |
+
+The measured set was written in Chinese; the phrasings above are its English equivalents. The failure
+is not language-specific — one word covering two senses is enough — but the tokeniser grants a lone
+Chinese word of two characters the weight of two hits, which is what made it fire so readily there.
 
 The 24 clean queries in `qrels.json` were written by the same person who wrote the triggers, which is
 exactly why they are clean. The hostile set was not.
@@ -84,8 +88,9 @@ So the default is what Claude Code does: **the index names every entry, and the 
 name matches.** No matcher, no false positives.
 
 When it does match, it is lexical: it compares words. Describe a problem in terms the entry already
-uses and it fires; describe the *symptom* while the entry records the *mechanism* — you say "拍出来一片
-黑", the entry says "黑帧" — and it does not. That is the limit `recallEnabled: true` inherits.
+uses and it fires; describe the *symptom* while the entry records the *mechanism* — you say "the photos
+come out black", the entry says "black frame" — and it does not. That is the limit `recallEnabled: true`
+inherits.
 
 So the useful mental model is **a well-indexed notebook the agent can see and open**, not an assistant
 that remembers on your behalf. What it does reliably is never get in the way: zero false recalls, zero
@@ -141,7 +146,7 @@ Set values under the `memory` row in the profile's `cordis.patch.yml`. This bund
 | `machineDir` | `''` | Optional machine-wide tier, absolute or `~`-prefixed. The workspace tier wins name collisions. |
 | `showIndex` | `true` | Inject the filename index. |
 | `indexBudgetChars` | `1400` | Ceiling on how many entries are **named** in the index, not on how many the notebook may hold. Entries past it are counted in the index and stay recallable. |
-| `recallEnabled` | `false` | Publish a matching entry for the turn. Off by default: a lexical matcher cannot tell *证书错误* from *证书考试*. |
+| `recallEnabled` | `false` | Publish a matching entry for the turn. Off by default: a lexical matcher cannot tell "certificate error" from "certificate exam". |
 | `recallBudgetChars` | `1400` | Ceiling on one recall publication. |
 | `maxRecall` | `2` | Maximum entries published for one message. |
 | `minRecallScore` | `4` | Weighted score floor (trigger phrase 5–7, filename 4, title 3, body 1). |
@@ -157,7 +162,7 @@ One file per subject. Frontmatter is optional; `INDEX.md` only fixes ordering.
 ```markdown
 ---
 status: verified
-triggers: platformio, 固件, 烧录, 编译, 路径太长, 装不上, 编译 失败
+triggers: platformio, firmware, flash, compile, path too long, will not install
 ---
 
 # Conclusion, usable on its own — 2026-11-02
@@ -172,15 +177,15 @@ Evidence: `exact command or error text that proves it`
 
   | you would type | do not list only |
   |---|---|
-  | 换台电脑打开就不对了 | 转发, 绝对路径, 盘符 |
-  | 浏览器能打开但命令不行 | curl, tls, schannel |
-  | 拍出来一片黑 | 黑帧, 白平衡 |
-  | 它怎么没想起来 | 触发词, 召回率 |
+  | it broke when I moved to another machine | forwarding, absolute path, drive letter |
+  | the browser works but the command does not | curl, tls, schannel |
+  | the photos come out black | black frame, white balance |
+  | why did it not remember | trigger, recall rate |
 
   Multi-word phrases count as a phrase and match only when every word appears — keep them specific
   (`dotnet pipe denied`, not `denied`). Avoid a **single generic word** (`configuration`, `permission`,
-  `重启`): once it pairs with any second hit it drags the entry into unrelated messages. Never use a
-  single Chinese character — it cannot earn the second hit that makes a match.
+  `restart`): once it pairs with any second hit it drags the entry into unrelated messages. Never use a
+  single character of a CJK script — it cannot earn the second hit that makes a match.
 - **`status`** is `candidate` (default), `verified`, or `disputed`. Disputed entries are never indexed
   and never recalled.
 - **`Evidence:`** is required when writing through `memory_write`. A clamped recall keeps that line
