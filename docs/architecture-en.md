@@ -1,18 +1,29 @@
 # Architecture
 
-> Owner: @FrozenYty · Revisit when: the notebook stops fitting in the index budget, or a harness
-> release lets a linked bundle import harness packages.
+> Owner: @FrozenYty · Revisit when: a harness release lets a linked bundle import harness packages, or
+> lexical matching proves to be the wrong bet at this scale.
 
 This document describes the current shape. For *why*, follow the ADR links; where they disagree,
 the ADR wins.
 
+## Contents
+
+One paragraph · The three parts · The index is computed, not maintained · Knowing whether it is
+working · Which entries are actually used · Host API guard · Capture · Where the policy lives · Data
+flow · Turn lifecycle · Cost model · Matching · Trust states · Evidence hygiene · Index drift ·
+Failure modes and what prevents them · Harness constraints that shaped the design
+
 ## One paragraph
 
 The notebook is a directory of markdown files — one subject per file, an optional `INDEX.md` fixing
-order, optional frontmatter. The plugin owns no content. It publishes the bare file list into the
-system prompt, and when a user message matches an entry it publishes that entry through the runtime
-context channel for the turn. Nothing is embedded, nothing is consolidated, and no model call
-happens on the read path. An empty notebook costs nothing.
+order, optional frontmatter. The plugin owns no content. It publishes a bounded, ordered list of
+filenames into the system prompt, and when a user message matches an entry it publishes that entry
+through the runtime context channel for the turn. Nothing is embedded, nothing is consolidated, and no
+model call happens on the read path. An empty notebook costs nothing.
+
+The measured limit is worth stating here rather than in a footnote: matching is lexical, so it fires
+when a question uses words the entry already contains, and misses most questions phrased from the
+symptom instead. See [Matching](#matching) for the numbers.
 
 ## The three parts
 
@@ -20,7 +31,8 @@ happens on the read path. An empty notebook costs nothing.
 |---|---|---|
 | Index | `ctx.systemPrompt.section` (`order` 4100) | 0 bytes if the notebook is empty |
 | Recall | `ctx.systemPrompt.context` (`order` 4101) | 0 bytes when nothing matches |
-| Tools | `ctx.tools.register` × 4 | tool schemas only |
+| Capture hint | `ctx.systemPrompt.context` (`order` 4102) | 0 bytes until the window fills |
+| Tools | `ctx.tools.register` × 7 | tool schemas only |
 
 Both prompt parts are registered globally, not per agent, because the content is derived from the
 session working directory rather than from the agent's history. Both are pure functions of the
@@ -198,12 +210,6 @@ is what keeps one turn from paying for recall on every step.
   six terms to four, and recency was deciding what the model saw.
 - **The cap is two.** `tls` appears in the trigger, the name, the title and the body; counting every
   field would let one common word clear any floor.
-
-Note what these rules require of the vocabulary: a trigger that can reach the floor alone must be
-specific enough to deserve it. Granting Chinese words their second hit immediately exposed seven
-single-word triggers (`重启`, `路径`, `下载`, `描述`, `清单`, `表格`, `计数`) that were too broad to
-stand alone — each recalled an unrelated entry from ordinary talk. Every one became a phrase. The
-matching rules and the vocabulary have to be tuned together; neither is correct on its own.
 - **Threshold:** at least `minRecallHits` distinct tokens (default 2) and a weighted score of at
   least `minRecallScore` (default 4). Two independent conditions, because a single high-weight token
   should not be enough and a pile of body hits should not be either.
@@ -215,8 +221,43 @@ matching rules and the vocabulary have to be tuned together; neither is correct 
   would stop discriminating. Prefix scanning is limited to the three small sets; the body set is
   large and stays exact.
 
-Deliberately no synonyms and no embeddings. A wrong recall costs tokens and trust; a missed recall
-is visible and fixable by adding a trigger.
+Note what these rules require of the vocabulary: a trigger that can reach the floor alone must be
+specific enough to deserve it. Granting Chinese words their second hit immediately exposed seven
+single-word triggers (`重启`, `路径`, `下载`, `描述`, `清单`, `表格`, `计数`) that were too broad to
+stand alone — each recalled an unrelated entry from ordinary talk. Every one became a phrase. The
+matching rules and the vocabulary have to be tuned together; neither is correct on its own.
+
+### What it measures
+
+Three sets, run against the author's 25-entry notebook and committed as
+[`test/qrels.json`](../test/qrels.json):
+
+| Set | Result | What it means |
+|---|---|---|
+| Queries in the notebook's own vocabulary | 52/52 (11/11 in the earlier set) | the rules work as designed |
+| Written blind, avoiding that vocabulary | **3/14** | the rules do not generalise |
+| Off-topic queries sharing vocabulary | 0/24 false positives | precision holds |
+
+The middle row is the honest headline. Ten of those fourteen scored **zero** — they matched nothing at
+all, not "matched the wrong entry". The diagnosis was not a threshold problem: every trigger had been
+written by the author in the entry's technical register, while the question described a symptom.
+
+| Typed | Listed |
+|---|---|
+| 换台电脑打开就不对了 | 转发, 绝对路径, 盘符 |
+| 浏览器能打开但命令不行 | curl, tls, schannel |
+| 拍出来一片黑 | 黑帧, 白平衡 |
+| 它怎么没想起来 | 触发词, 召回率 |
+
+Adding the symptom phrasings took that same set to 11/11 with false positives still zero. **Nothing
+in the algorithm changed.** So the lever is vocabulary, and the limit is that vocabulary has to be
+written ahead of the question it will answer — which is why the useful mental model is a well-indexed
+notebook, not an assistant that remembers on your behalf.
+
+Deliberately no synonyms and no embeddings. A wrong recall costs tokens and trust; a missed recall is
+visible and fixable by adding a trigger. The survey behind that choice found that every published
+memory benchmark it checked failed checking, and that the two projects which measured hybrid retrieval
+could not show it moving answer quality at all.
 
 ## Trust states
 
@@ -265,12 +306,16 @@ habit. A missing `INDEX.md` is not drift: ordering falls back to modification ti
 
 | Failure | Prevention |
 |---|---|
-| A note exists but is never read | The filename index is unconditional, so the name is always in front of the model |
+| A note exists but is never read | The filename index is unconditional, so the name is always in front of the model while it is resident |
+| An entry falls out of the index and nobody notices | The overflow is **counted** in the index, and `memory_health` reports it as `degraded` |
 | A stale note keeps being injected | `disputed` is a one-word state change; nothing else is needed |
 | Recall floods the context | Two caps (entry count, characters) plus per-session suppression |
-| The index grows until it is truncated into uselessness | No descriptions to truncate; bare filenames are the cheapest possible line |
+| The index grows until it is truncated into uselessness | It is no longer truncated: the budget caps residency and the remainder is counted |
 | A wrong fact is recalled confidently | Evidence is mandatory on write and preserved through clamping |
 | The plugin breaks a session on resume | No custom session events; all state is derived or in files |
+| **The plugin silently fails to load** | The host API guard throws; the tool-schema rules are copied into the test suite |
+| **Memory is broken and looks like "nothing matched"** | `memory_health` checks capability separately from results, including whether the notebook is writable |
+| **Dead entries accumulate** | `memory_usage` names the entries recall has never published |
 
 ## Harness constraints that shaped the design
 
