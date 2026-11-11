@@ -7,6 +7,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.8.1] — 2026-11-11
+
+### Fixed
+
+- **Body-only matches could recall.** Body words count one each and were uncapped, so a long entry
+  that quoted the sentence `今天天气怎么样` collected six body hits from that sentence and recalled on
+  nothing but coincidence. Writing a memory entry that quoted its own test sentences made this
+  visible: three unrelated queries started recalling it. A hit now requires a strong match — a
+  trigger, the filename, or the title; body text explains an entry, it does not identify it.
+
 ## [0.8.0] — 2026-11-11
 
 ### Fixed
@@ -168,7 +178,8 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory-notebook/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/FrozenYty/dsh-memory-notebook/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.8.1
 [0.8.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.8.0
 [0.7.1]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.7.1
 [0.7.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.7.0

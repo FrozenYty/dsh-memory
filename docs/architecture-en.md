@@ -113,6 +113,11 @@ is what keeps one turn from paying for recall on every step.
   so `贡献者` recalled alone while `相机` did not — equally specific words treated differently. A
   Chinese word can never become an identifier either, because filenames are ASCII. A single Chinese
   character is excluded, because those are exactly the fragments bigrams produce from sentences.
+- **A hit needs a strong match, not just body words.** A trigger, the filename, or the title must
+  match; body-only evidence never recalls. Body text is the largest set and the weakest signal, and
+  it accumulates: a long entry that quoted the sentence "今天天气怎么样" collected six body hits from
+  that sentence and recalled on nothing but coincidence. An entry's subject is what its name, title
+  and triggers say it is; the body explains, it does not identify.
 - **The cap is two.** `tls` appears in the trigger, the name, the title and the body; counting every
   field would let one common word clear any floor.
 
