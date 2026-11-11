@@ -587,36 +587,44 @@ export function diagnoseNotebook(config, cwd) {
   const problems = []
   const dirs = resolveDirs(config, cwd)
 
+  // Flat, and every field always present. A tool output schema has to describe exactly what is
+  // returned, and a nested nullable object needs a union type the host may not accept — this shape
+  // needs nothing but strings, numbers, booleans and arrays of strings.
+  const shape = (status, dir, entries) => ({
+    status,
+    dir,
+    entries,
+    indexAgrees: false,
+    indexChars: 0,
+    indexBudget: config.indexBudgetChars,
+    indexSlotsLeft: 0,
+    disputed: 0,
+    withoutTriggers: [],
+    withoutEvidence: [],
+    policy: false,
+    problems: [],
+  })
+
   if (dirs.length === 0) {
-    return {
-      status: 'unconfigured',
-      dir: null,
-      entries: 0,
-      index: null,
-      evidence: null,
-      problems: ['no memory directory is configured: set workspaceDir or machineDir'],
-    }
+    const report = shape('unconfigured', '', 0)
+    report.problems = ['no memory directory is configured: set workspaceDir or machineDir']
+    return report
   }
 
   const dir = dirs[0]
   if (!existsSync(dir)) {
     // Not an error. A plugin that has never been written to has no directory, and creating one in
     // every project the agent opens would be worse than an empty notebook.
-    return { status: 'absent', dir, entries: 0, index: null, evidence: null, problems: [] }
+    return shape('absent', dir, 0)
   }
 
   let entries
   try {
     entries = scanDir(dir)
   } catch (error) {
-    return {
-      status: 'broken',
-      dir,
-      entries: 0,
-      index: null,
-      evidence: null,
-      problems: [`cannot read the notebook: ${error.message}`],
-    }
+    const report = shape('broken', dir, 0)
+    report.problems = [`cannot read the notebook: ${error.message}`]
+    return report
   }
 
   let writable = true
@@ -674,13 +682,14 @@ export function diagnoseNotebook(config, cwd) {
     status,
     dir,
     entries: entries.length,
-    index: { agrees: drift.unlisted.length === 0 && drift.missing.length === 0, chars, budget, slotsLeft },
-    evidence: {
-      disputed: entries.length - visible.length,
-      withoutTriggers: withoutTriggers.map((entry) => entry.key),
-      withoutEvidence: withoutEvidence.map((entry) => entry.key),
-      policy,
-    },
+    indexAgrees: drift.unlisted.length === 0 && drift.missing.length === 0,
+    indexChars: chars,
+    indexBudget: budget,
+    indexSlotsLeft: slotsLeft,
+    disputed: entries.length - visible.length,
+    withoutTriggers: withoutTriggers.map((entry) => entry.key),
+    withoutEvidence: withoutEvidence.map((entry) => entry.key),
+    policy,
     problems,
   }
 }
