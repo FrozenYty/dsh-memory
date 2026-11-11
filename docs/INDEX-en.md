@@ -38,7 +38,8 @@ together. Read this before adding, moving or renaming a document.
 | The trigger-matching rule (weights, phrases, prefix) | `docs/architecture-en.md`, and the trigger note in both READMEs |
 | A recall judgement (what should match what) | `test/qrels.json` — a flipped case fails CI, so the edit is a reviewed decision, not a side effect |
 | A string the plugin page shows (`locale/*.json`) | both languages; `scripts/check-docs.mjs` fails when the key sets differ |
-| The version in `package.json` | a `## [x.y.z]` section in `CHANGELOG.md` — one change, and `check-docs` enforces it |
+| A version in `package.json` | a `## [x.y.z]` section in `CHANGELOG.md` — one change, and `check-docs` enforces it |
+| A line in `README.md` | English, except the language switcher; `check-docs` fails on any Chinese there. Tokeniser examples in `docs/` keep their original script, because CJK bigram behaviour cannot be shown without one |
 
 ## Decision records
 

@@ -7,6 +7,7 @@
 //   e) the version in package.json has a matching CHANGELOG section
 //   f) every key in index.js DEFAULTS is documented in both README tables
 //   g) the fixture policy and the bundled template are the same document
+//   h) README.md carries no Chinese outside its language switcher
 //
 // Rules are reported together so one run shows every problem.
 
@@ -329,6 +330,25 @@ function checkPolicyCopies() {
   };
 }
 
+// The English README is the one document a reader may open without knowing Chinese, so it stays English.
+// The language switcher is the single allowed exception. Tokeniser examples are the reason this is
+// limited to README.md and not applied to docs/: `mcp挂了` cannot be explained in English.
+function checkReadmeIsEnglish() {
+  const text = readText(path.join(repoRoot, 'README.md'));
+  if (text === null) return { ok: true, summary: 'no README.md', details: [] };
+  const switcher = /^\s*English\s*\|\s*\[中文\]/;
+  const offenders = [];
+  text.split(/\r?\n/).forEach((line, index) => {
+    if (switcher.test(line)) return;
+    if (/[\u3400-\u9fff]/.test(line)) offenders.push(`line ${index + 1}: ${line.trim().slice(0, 70)}`);
+  });
+  return {
+    ok: offenders.length === 0,
+    summary: 'README.md carries no Chinese outside the language switcher',
+    details: offenders,
+  };
+}
+
 function main() {
   const rules = [
     { label: 'a) ADR index', result: checkAdrIndex() },
@@ -338,6 +358,7 @@ function main() {
     { label: 'e) version is recorded', result: checkVersionRecorded() },
     { label: 'f) configuration is documented', result: checkConfigTable() },
     { label: 'g) policy copies agree', result: checkPolicyCopies() },
+    { label: 'h) README.md is English', result: checkReadmeIsEnglish() },
   ];
 
   let passed = 0;

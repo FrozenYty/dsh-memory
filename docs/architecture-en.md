@@ -241,9 +241,10 @@ Four sets, run against the author's notebook. The first three are committed as
 
 The third and fourth rows disagree because of who wrote them. `qrels.json`'s off-topic queries were
 composed by the same person who composed the triggers, so they avoid the words that would have
-misfired; "证书考试过了", "笔记本屏幕有点暗" and "插件挺多的" were not composed to be fair. They fire
-because a Chinese word of two or more characters counts two hits — a rule added so `相机` could recall
-alone — and that lets `证书`, `笔记本`, `插件`, `配置` and `索引` recall alone too.
+misfired; an exam certificate, a laptop screen, and a remark about plugins were not composed to be
+fair. They fire because the tokeniser grants a word of two or more CJK characters the weight of two
+hits — a rule added so that a two-character word could recall alone — and that same weight then applies
+to any word carrying two everyday senses.
 
 A threshold sweep shows the gate cannot separate the two populations:
 
@@ -267,10 +268,14 @@ technical register, while the question described a symptom.
 
 | Typed | Listed |
 |---|---|
-| 换台电脑打开就不对了 | 转发, 绝对路径, 盘符 |
-| 浏览器能打开但命令不行 | curl, tls, schannel |
-| 拍出来一片黑 | 黑帧, 白平衡 |
-| 它怎么没想起来 | 触发词, 召回率 |
+| it broke when I moved to another machine | forwarding, absolute path, drive letter |
+| the browser works but the command does not | curl, tls, schannel |
+| the photos come out black | black frame, white balance |
+| why did it not remember | trigger, recall rate |
+
+These are the English equivalents of the measured set, which was written in Chinese. The tokeniser
+examples elsewhere in this section keep their original script, because the bigram behaviour they
+describe cannot be shown in a language without one.
 
 Adding the symptom phrasings took that same set to 11/11 with false positives still zero. **Nothing
 in the algorithm changed.** So the lever is vocabulary, and the limit is that vocabulary has to be

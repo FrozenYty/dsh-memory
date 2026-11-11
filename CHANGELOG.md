@@ -7,6 +7,30 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.15.1] — 2026-11-11
+
+### Changed
+
+- **The English README carries no Chinese.** It had fourteen lines of it — the hostile query table, the
+  symptom-versus-mechanism example, the trigger advice, a frontmatter sample — all of which a reader who
+  does not read Chinese had to skip. They are now English equivalents. The Chinese README keeps the
+  original phrasings, because that is where they are the real thing rather than a translation.
+- **The same two tables in `architecture-en.md` were converted**, for the same reason.
+
+### Added
+
+- **A check that `README.md` stays English**, allowing only the language switcher. Verified by adding one
+  Chinese line: it fails naming the line number.
+
+### Notes
+
+- **Two kinds of Chinese are deliberately kept in English documents.** Tokeniser examples (`mcp挂了`,
+  `贡献者`, `今天天气怎么样`) cannot be explained in a language without CJK bigrams — the behaviour they
+  demonstrate does not exist there. And `CHANGELOG.md` keeps every original phrasing, including release
+  entries that quote what the plugin page used to say, because a changelog that edits its own history
+  stops being evidence.
+- The check is limited to `README.md` rather than applied to `docs/`, for exactly that first reason.
+
 ## [0.15.0] — 2026-11-11
 
 ### Changed
@@ -440,7 +464,8 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/v0.15.1...HEAD
+[0.15.1]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.15.1
 [0.15.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.15.0
 [0.14.1]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.14.1
 [0.14.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.14.0
