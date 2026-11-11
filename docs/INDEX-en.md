@@ -51,6 +51,7 @@ together. Read this before adding, moving or renaming a document.
 | [0008](adr/08-policy-template-and-seeding.md) | The policy ships with the plugin and is seeded where a notebook lacks one | Accepted |
 | [0009](adr/09-derived-index-and-write-refusal.md) | The index is derived data; a write that would truncate it is refused | Accepted |
 | [0010](adr/10-capture-hint.md) | A capture hint before compaction, not automatic capture | Accepted |
+| [0011](adr/11-judgement-set-for-recall.md) | Recall is measured against written judgements, not a benchmark | Accepted |
 
 Add a row here whenever an ADR is added. `scripts/check-docs.mjs` fails the build when an ADR
 exists on disk but is not listed in this table.

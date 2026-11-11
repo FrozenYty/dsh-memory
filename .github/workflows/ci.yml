@@ -28,6 +28,9 @@ jobs:
       - name: Tests
         run: node test-core.mjs
 
+      - name: Recall judgements
+        run: node scripts/eval-recall.mjs
+
       - name: No machine-specific paths
         run: node scripts/check-paths.mjs
 
