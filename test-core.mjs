@@ -7,10 +7,11 @@
  *
  *   node test-core.mjs
  */
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, appendFileSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { apply as pluginApply } from './index.js'
 import {
   ACK_PATTERN,
   auditEntries,
@@ -20,8 +21,11 @@ import {
   indexBudgetVerdict,
   indexDrift,
   loadNotebook,
+  normalizeKey,
   pickHits,
   projectedIndexChars,
+  readUsage,
+  recordUsage,
   renderRecall,
   scanDir,
   scoreEntry,
@@ -29,6 +33,8 @@ import {
   strongSignalRarity,
   syncIndexFile,
   tokenize,
+  usageReport,
+  USAGE_FILE,
   writeEntryFile,
 } from './notebook-core.js'
 
@@ -583,7 +589,66 @@ check(
 )
 
 // ---------------------------------------------------------------------------
-console.log('\n[16] safety')
+console.log('\n[16] usage: which entries are actually used')
+// ---------------------------------------------------------------------------
+// "Never recalled" is the finding worth having: an entry injected a hundred times and opened once is
+// doing nothing, and nothing else in the plugin notices. A total would hide the one entry nobody uses.
+const usageDir = mkdtempSync(join(tmpdir(), 'mn-usage-'))
+const usedKey = entries[0].key
+const unusedKey = entries[1].key
+check('recording usage succeeds', recordUsage(usageDir, usedKey) === true && recordUsage(usageDir, usedKey) === true)
+check('usage on a missing directory fails quietly', recordUsage(join(usageDir, 'nope'), usedKey) === false)
+check('an empty log reads as empty', readUsage(emptyDir).length === 0)
+
+const usageRows = readUsage(usageDir)
+check('usage reads back', usageRows.length === 2, `${usageRows.length}`)
+const firstRow = JSON.parse(readFileSync(join(usageDir, USAGE_FILE), 'utf8').split('\n')[0])
+check(
+  'the log records a day and an entry name and nothing else',
+  Object.keys(firstRow).sort().join(',') === 'd,e',
+  JSON.stringify(firstRow),
+)
+check(
+  'no query text reaches the log',
+  readFileSync(join(usageDir, USAGE_FILE), 'utf8')
+    .trim()
+    .split('\n')
+    .every((line) => Object.keys(JSON.parse(line)).length === 2),
+)
+
+const usage = usageReport(entries, usageRows)
+check('a recalled entry is counted', usage.used.some((row) => row.key === usedKey && row.recalls === 2), JSON.stringify(usage.used))
+check('an entry never recalled is named', usage.never.includes(unusedKey), JSON.stringify(usage.never))
+check('the entry that was recalled is not in never', !usage.never.includes(usedKey))
+check('disputed entries are not reported as unused', usageReport([{ ...entries[0], status: 'disputed' }], []).never.length === 0)
+
+appendFileSync(join(usageDir, USAGE_FILE), '{"d":"2026-01-01","e":"tru', 'utf8')
+check('a half-written line is skipped, not fatal', readUsage(usageDir).length === 2, `${readUsage(usageDir).length}`)
+
+// ---------------------------------------------------------------------------
+console.log('\n[17] the host API guard')
+// ---------------------------------------------------------------------------
+// A plugin that silently does nothing is worse than one that fails to load, because nothing tells the
+// user which happened.
+let guarded = ''
+try {
+  pluginApply({ systemPrompt: { section: () => {}, context: () => {} }, tools: {} }, {})
+} catch (error) {
+  guarded = error.message
+}
+check('a host without tools.register fails loudly', /tools\.register/.test(guarded), guarded)
+check('the failure says it is a load failure', /not active/.test(guarded), guarded)
+
+let missingPrompt = ''
+try {
+  pluginApply({ systemPrompt: {}, tools: { register: () => {} } }, {})
+} catch (error) {
+  missingPrompt = error.message
+}
+check('a host without systemPrompt.section fails loudly', /systemPrompt\.section/.test(missingPrompt), missingPrompt)
+
+// ---------------------------------------------------------------------------
+console.log('\n[18] safety')
 // ---------------------------------------------------------------------------
 const readOnlyDir = mkdtempSync(join(tmpdir(), 'mn-ro-'))
 writeFileSync(join(readOnlyDir, 'broken.md'), '---\nstatus: candidate\n---\nno heading, no trouble\n', 'utf8')

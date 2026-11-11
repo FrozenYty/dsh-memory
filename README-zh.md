@@ -97,6 +97,7 @@ Evidence: `能证明这句话的原始命令或报错`
 | `memory_verify` | 标为 `verified`，或退役为 `disputed`。 |
 | `memory_audit` | 没有 `Evidence:` 的条目、长期未被触碰的条目，以及 `INDEX.md` 两个方向的漂移。 |
 | `memory_health` | 区分“记忆坏了”和“只是没有匹配上”。返回 `ok`、`degraded`、`broken`、`absent`、`unconfigured`。 |
+| `memory_usage` | 哪些条目被召回出版过、哪些从来没有。只记条目名和日期，不记你的提问。 |
 
 ## 为什么省
 

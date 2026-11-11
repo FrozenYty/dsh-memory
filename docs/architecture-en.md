@@ -55,6 +55,25 @@ creating one everywhere would be worse.
 
 See [ADR 0012](adr/12-health-check.md).
 
+## Which entries are actually used
+
+Recall writes one line per published entry to `usage.jsonl` beside the entries — a date and an entry
+name, and nothing else. `memory_usage` reports which entries have never been published and which have,
+counted per entry rather than in aggregate, because a total hides the one entry nobody uses.
+
+The log sits in the notebook, not in a cache, because usage history cannot be rebuilt from the entries.
+The privacy bound is deliberate: no query text, no session id, no path. The cost is that it cannot
+answer "which query failed to match", so vocabulary is grown by reading conversations rather than by
+mining a transcript. See [ADR 0013](adr/13-usage-counts.md).
+
+## Host API guard
+
+`apply` checks the host APIs it needs — `systemPrompt.section`, `systemPrompt.context`,
+`tools.register` — and throws when one is missing. The `inject` declaration covers the services, but a
+host release can keep a service and change its shape, and a plugin that silently does nothing is worse
+than one that fails to load: nothing tells the user which happened. The error says so explicitly —
+this is a load failure, not an empty notebook.
+
 ## Capture
 
 The plugin makes the notebook usable; nothing made it written to. Capture depended entirely on the

@@ -32,10 +32,13 @@ import {
   loadNotebook,
   normalizeKey,
   pickHits,
+  readUsage,
+  recordUsage,
   renderRecall,
   resolveDirs,
   setStatus,
   syncIndexFile,
+  usageReport,
   writeEntryFile,
 } from './notebook-core.js'
 
@@ -117,6 +120,23 @@ function messageText(message) {
 }
 
 export function apply(ctx, config) {
+  // --- host API guard ---------------------------------------------------------
+  // A plugin that silently does nothing is worse than one that fails to load, because nothing tells
+  // the user which happened. `inject` already covers the services; this covers their shape, which a
+  // host release can change without removing the service.
+  const required = [
+    ['systemPrompt.section', typeof ctx.systemPrompt?.section === 'function'],
+    ['systemPrompt.context', typeof ctx.systemPrompt?.context === 'function'],
+    ['tools.register', typeof ctx.tools?.register === 'function'],
+  ]
+  const missing = required.filter(([, present]) => !present).map(([name]) => name)
+  if (missing.length > 0) {
+    throw new Error(
+      `dsh-memory-notebook requires host APIs this DSH version does not provide: ${missing.join(', ')}. ` +
+        'Memory is not active, and it was never active — this is a load failure, not an empty notebook.',
+    )
+  }
+
   const cfg = { ...DEFAULTS, ...(config ?? {}) }
   const cwdOf = (context) => context?.agent?.session?.header?.cwd
   const sessionIdOf = (context) => context?.agent?.session?.id
@@ -239,7 +259,13 @@ export function apply(ctx, config) {
         const picked = pickHits(candidates, query, cfg)
         const text = picked.length === 0 ? '' : renderRecall(picked, cfg.recallBudgetChars)
         for (const hit of picked) seen.add(hit.entry.key)
-        if (picked.length > 0) recallsBySession.set(sessionId, (recallsBySession.get(sessionId) ?? 0) + picked.length)
+        if (picked.length > 0) {
+          recallsBySession.set(sessionId, (recallsBySession.get(sessionId) ?? 0) + picked.length)
+          // Which entries recall has ever published, so "never used" is answerable. Swallowed on
+          // failure: telemetry is never worth breaking a recall over.
+          const dir = resolveDirs(cfg, cwdOf(context))[0]
+          if (dir !== undefined) for (const hit of picked) recordUsage(dir, hit.entry.key)
+        }
         recallBySession.set(sessionId, { query, text })
         return text
       },
@@ -478,6 +504,50 @@ export function apply(ctx, config) {
         const status = args.status === 'verified' ? 'verified' : args.status === 'disputed' ? 'disputed' : 'candidate'
         setStatus(entry.dir, entry.key, status)
         return { name: entry.key, status }
+      },
+    }),
+  )
+
+  ctx.tools.register(
+    defineTool({
+      name: 'memory_usage',
+      description:
+        'Report which entries recall has ever published, and which it never has. An entry that has been recalled many times and opened once is doing nothing, and nothing else in the plugin notices; a total would hide the one entry nobody uses. Counted per entry, and at most once per session, because an entry already injected in a session is not injected again — so the count is sessions reached, not matches found. Records entry names and dates only, never the query. Use when deciding what to retire, or when the notebook feels larger than its usefulness.',
+      parameters: { type: 'object', additionalProperties: false, properties: {} },
+      output: {
+        schema: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['recorded', 'never', 'used'],
+          properties: {
+            recorded: { type: 'number', description: 'Total recall events on disk' },
+            never: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Entries recall has never published — candidates for retirement',
+            },
+            used: {
+              type: 'array',
+              items: {
+                type: 'object',
+                additionalProperties: false,
+                required: ['key', 'recalls'],
+                properties: {
+                  key: { type: 'string' },
+                  recalls: {
+                    type: 'number',
+                    description: 'Sessions this entry was published to; suppressed within a session once injected',
+                  },
+                  last: { type: 'string', description: 'Most recent day this entry was recalled' },
+                },
+              },
+            },
+          },
+        },
+      },
+      async execute(_args, exec) {
+        const dir = resolveDirs(cfg, exec?.agent?.session?.header?.cwd)[0]
+        return usageReport(entriesFor(exec), dir === undefined ? [] : readUsage(dir))
       },
     }),
   )

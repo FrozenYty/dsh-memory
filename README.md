@@ -106,6 +106,7 @@ Evidence: `exact command or error text that proves it`
 | `memory_verify` | Promote to `verified`, or retire to `disputed`. |
 | `memory_audit` | Entries with no `Evidence:`, entries untouched for long, and `INDEX.md` drift in either direction. |
 | `memory_health` | Whether memory is broken or merely had nothing to say. `ok`, `degraded`, `broken`, `absent`, `unconfigured`. |
+| `memory_usage` | Which entries recall has ever published, and which it never has. Records entry names and dates only — never the query. |
 
 ## Why it is cheap
 

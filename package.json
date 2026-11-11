@@ -1,6 +1,6 @@
 {
   "name": "dsh-memory-notebook",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "private": true,
   "description": "Low-token memory notebook for DeepSeek Harness: indexes .agents/memory files in the system prompt and recalls only the entries a message actually matches.",
   "type": "module",

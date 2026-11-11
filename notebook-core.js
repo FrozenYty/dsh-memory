@@ -3,7 +3,7 @@
  * message-to-entry matching. No harness imports live here, so this module is directly
  * testable and the plugin entry stays thin.
  */
-import { accessSync, constants, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { accessSync, appendFileSync, constants, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 
@@ -682,6 +682,79 @@ export function diagnoseNotebook(config, cwd) {
       policy,
     },
     problems,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// usage
+// ---------------------------------------------------------------------------
+
+/** Append-only file beside the entries. `.jsonl` so the entry scan never mistakes it for an entry. */
+export const USAGE_FILE = 'usage.jsonl'
+
+/**
+ * Record that an entry was published by recall.
+ *
+ * What is written is a date and an entry name, and nothing else — no query text, no session id, no
+ * path. That is enough to answer the only question worth asking of this data ("which entries have
+ * never been used") without turning the notebook's neighbour into a transcript of the user's work.
+ *
+ * Failure is swallowed: telemetry is never worth breaking a recall over.
+ */
+export function recordUsage(dir, entryKey) {
+  try {
+    appendFileSync(join(dir, USAGE_FILE), `${JSON.stringify({ d: new Date().toISOString().slice(0, 10), e: entryKey })}\n`, 'utf8')
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** Read the usage log, tolerating a truncated or hand-edited line. */
+export function readUsage(dir) {
+  const path = join(dir, USAGE_FILE)
+  if (!existsSync(path)) return []
+  let text = ''
+  try {
+    text = readFileSync(path, 'utf8')
+  } catch {
+    return []
+  }
+  const rows = []
+  for (const line of text.split(/\r?\n/)) {
+    if (line.length === 0) continue
+    try {
+      const row = JSON.parse(line)
+      if (typeof row?.e === 'string') rows.push({ day: String(row.d ?? ''), entry: row.e })
+    } catch {
+      // A half-written last line is the expected damage; skip it rather than losing the file.
+    }
+  }
+  return rows
+}
+
+/**
+ * Which entries have never been recalled, and how often the rest have.
+ *
+ * "Never recalled" is the finding worth having: an entry that has been injected a hundred times and
+ * opened once is doing nothing, and nothing else in the plugin notices. Counted per entry rather
+ * than in aggregate, because a total hides the one entry nobody uses.
+ */
+export function usageReport(entries, usage) {
+  const counts = new Map()
+  const lastDay = new Map()
+  for (const row of usage) {
+    counts.set(row.entry, (counts.get(row.entry) ?? 0) + 1)
+    if (row.day > (lastDay.get(row.entry) ?? '')) lastDay.set(row.entry, row.day)
+  }
+  const live = entries.filter((entry) => entry.status !== 'disputed')
+  return {
+    recorded: usage.length,
+    never: live.filter((entry) => !counts.has(entry.key)).map((entry) => entry.key),
+    used: live
+      .filter((entry) => counts.has(entry.key))
+      .map((entry) => ({ key: entry.key, recalls: counts.get(entry.key), last: lastDay.get(entry.key) ?? '' }))
+      .sort((a, b) => b.recalls - a.recalls),
   }
 }
 

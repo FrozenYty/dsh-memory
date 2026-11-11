@@ -7,6 +7,22 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.12.0] — 2026-11-11
+
+### Added
+
+- **`memory_usage`: which entries are actually used.** Recall now writes one line per published entry —
+  a date and an entry name — to `usage.jsonl` beside the entries, and the tool reports which entries
+  recall has never published. An entry injected many times and opened once is dead weight, and nothing
+  noticed before. Counted per entry, and at most once per session — an entry already injected in a
+  session is not injected again, so the count is sessions reached, not matches found.
+  The privacy bound is deliberate: no query text, no session id, no path. The cost is that it cannot
+  answer "which query failed to match". [ADR 0013](docs/adr/13-usage-counts.md)
+- **A host API guard.** `apply` checks for `systemPrompt.section`, `systemPrompt.context` and
+  `tools.register`, and throws when one is missing. `inject` covers the services, but a host release can
+  keep a service and change its shape; a plugin that silently does nothing is worse than one that fails
+  to load, because nothing tells the user which happened.
+
 ## [0.11.0] — 2026-11-11
 
 ### Added
@@ -245,7 +261,8 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory-notebook/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/FrozenYty/dsh-memory-notebook/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.12.0
 [0.11.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.11.0
 [0.10.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.10.0
 [0.9.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.9.0
