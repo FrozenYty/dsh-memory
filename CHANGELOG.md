@@ -7,6 +7,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-11-11
+
+### Changed
+
+- The notebook's policy moved out of a skill and into `notebook-policy.md` inside the notebook
+  ([ADR 0007](docs/adr/07-policy-in-the-notebook.md)). The skill directory is gone, and the
+  injected index header names the policy entry so it stays discoverable. The notebook is now
+  self-contained: entries and the rules governing them travel as one directory.
+
 ## [0.2.0] — 2026-11-11
 
 ### Added
@@ -55,6 +64,7 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory-notebook/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/FrozenYty/dsh-memory-notebook/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.3.0
 [0.2.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.2.0
 [0.1.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.1.0

@@ -26,6 +26,20 @@ Both prompt parts are registered globally, not per agent, because the content is
 session working directory rather than from the agent's history. Both are pure functions of the
 filesystem plus one cache, so neither writes session events.
 
+## Where the policy lives
+
+The rules for writing into the notebook — what earns an entry, the two shapes, the entry format,
+how entries age — are themselves an entry: `notebook-policy.md`. The injected index header names it,
+so it is discoverable without a skill advertising it, and it costs one index line instead of a
+resident prompt section.
+
+The policy is `status: verified`: it is granted by the user, not observed by the agent. It carries
+an `Evidence:` line saying it is a policy rather than a claim, so the audit does not flag it.
+
+Nothing in the plugin enforces the policy. The plugin enforces what it can check mechanically —
+`evidence` on write, `disputed` filtering, the trust states — and the rest is prose the model reads
+when a message mentions memory. See [ADR 0007](adr/07-policy-in-the-notebook.md).
+
 ## Data flow
 
 ```mermaid

@@ -33,9 +33,11 @@ markdown in your repository; the plugin decides *when to look* and *when to writ
 3. **Four tools** so the agent can read and write the notebook deliberately, with evidence required
    on every write.
 
-The notebook itself is untouched: one markdown file per subject, an optional `INDEX.md` fixing their
-order, and optional frontmatter. See [docs/architecture-en.md](docs/architecture-en.md) for why the
-parts are arranged this way.
+The notebook itself is untouched: one markdown file per subject, an optional `INDEX.md` fixing
+their order, optional frontmatter — and one entry, `notebook-policy.md`, that states the rules for
+writing into it. The policy travels with the notebook, so no skill or external document has to
+accompany it. See [docs/architecture-en.md](docs/architecture-en.md) for why the parts are arranged
+this way.
 
 ## Install
 
