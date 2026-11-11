@@ -1,4 +1,4 @@
-# dsh-memory-notebook
+# dsh-memory
 
 [English](README.md) | 中文
 
@@ -85,7 +85,7 @@ dsh plugin --profile <名字> add <这份代码的路径>
 
 ## 配置
 
-在 profile 的 `cordis.patch.yml` 里 `memory-notebook` 那一行下面设置。这个 bundle 不声明 `Config`
+在 profile 的 `cordis.patch.yml` 里 `memory` 那一行下面设置。这个 bundle 不声明 `Config`
 schema，所以值按原样取用；下面的默认值写在代码里。
 
 | 键 | 默认 | 含义 |

@@ -7,6 +7,29 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.14.0] — 2026-11-11
+
+### Changed
+
+- **Renamed to `dsh-memory`.** It was `dsh-memory-notebook`. The old name described the implementation —
+  a notebook — while the thing itself is the harness's memory; "notebook" is how it is stored, not what
+  it is for. Every current occurrence moved: the package name, the patch id (`memory-notebook` →
+  `memory`), the plugin identity (`export const name`), the three prompt-section names, and the XML tag
+  the model sees (`<memory-notebook>` → `<memory>`). GitHub URLs follow the planned repository rename.
+  The display name is now 记忆 / Memory.
+- **This is a breaking rename in the install sense.** A profile row that names `dsh-memory-notebook`
+  will not resolve. The plugin needs reinstalling against the new package name.
+
+### Notes
+
+- **`dsh-memory` is taken on npm** — published 2026-08-13 by `bbnopromo`, a SQLite FTS5 memory plugin.
+  This repository is not published and is installed by path, so the collision has no effect today. It
+  becomes real the moment either side publishes, and that is the reason to know it now rather than
+  later.
+- One line in this file still says `dsh-memory-notebook`: the v0.5.0 entry recording that the `@local/`
+  scope was dropped. That sentence was true when written. A changelog that edits its own history stops
+  being evidence.
+
 ## [0.13.3] — 2026-11-11
 
 ### Changed
@@ -371,21 +394,23 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory-notebook/compare/v0.13.2...HEAD
-[0.13.2]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.13.2
-[0.13.1]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.13.1
-[0.13.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.13.0
-[0.12.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.12.0
-[0.11.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.11.0
-[0.10.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.10.0
-[0.9.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.9.0
-[0.8.1]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.8.1
-[0.8.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.8.0
-[0.7.1]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.7.1
-[0.7.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.7.0
-[0.6.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.6.0
-[0.5.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.5.0
-[0.4.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.4.0
-[0.3.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.3.0
-[0.2.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.2.0
-[0.1.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.1.0
+[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.14.0
+[0.13.3]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.13.3
+[0.13.2]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.13.2
+[0.13.1]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.13.1
+[0.13.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.13.0
+[0.12.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.12.0
+[0.11.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.11.0
+[0.10.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.10.0
+[0.9.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.9.0
+[0.8.1]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.8.1
+[0.8.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.8.0
+[0.7.1]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.7.1
+[0.7.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.7.0
+[0.6.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.6.0
+[0.5.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.5.0
+[0.4.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.4.0
+[0.3.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.3.0
+[0.2.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.2.0
+[0.1.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.1.0

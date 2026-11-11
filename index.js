@@ -1,5 +1,5 @@
 /**
- * dsh-memory-notebook — low-token persistent memory for DeepSeek Harness.
+ * dsh-memory — low-token persistent memory for DeepSeek Harness.
  *
  * The notebook is a directory of markdown files, one per subject, with an optional
  * INDEX.md fixing their order. This plugin never owns the content. It only:
@@ -42,16 +42,16 @@ import {
   writeEntryFile,
 } from './notebook-core.js'
 
-export const name = 'memory-notebook'
+export const name = 'memory'
 
 /** `systemPrompt` and `tools` are required; `tokenMeter` is optional and used only for the hint. */
 export const inject = ['systemPrompt', 'tools']
 
-const SECTION_NAME = 'memory-notebook:index'
+const SECTION_NAME = 'memory:index'
 const SECTION_ORDER = 4100
-const CONTEXT_NAME = 'memory-notebook:recall'
+const CONTEXT_NAME = 'memory:recall'
 const CONTEXT_ORDER = 4101
-const HINT_NAME = 'memory-notebook:capture-hint'
+const HINT_NAME = 'memory:capture-hint'
 const HINT_ORDER = 4102
 
 const CAPTURE_HINT =
@@ -132,7 +132,7 @@ export function apply(ctx, config) {
   const missing = required.filter(([, present]) => !present).map(([name]) => name)
   if (missing.length > 0) {
     throw new Error(
-      `dsh-memory-notebook requires host APIs this DSH version does not provide: ${missing.join(', ')}. ` +
+      `dsh-memory requires host APIs this DSH version does not provide: ${missing.join(', ')}. ` +
         'Memory is not active, and it was never active — this is a load failure, not an empty notebook.',
     )
   }
