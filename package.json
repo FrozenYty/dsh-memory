@@ -2,7 +2,7 @@
   "name": "dsh-memory-notebook",
   "version": "0.13.2",
   "private": true,
-  "description": "Markdown-notebook memory for DeepSeek Harness: your own notes become the agent's long-term memory, with a resident index, on-demand reads, and evidence required on every write. No embeddings, no server, no model call per turn.",
+  "description": "Your experience, visible to the agent — a markdown memory notebook for DeepSeek Harness. No embeddings, no server, no model call per turn.",
   "type": "module",
   "license": "MIT",
   "repository": {
