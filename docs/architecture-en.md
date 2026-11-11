@@ -99,7 +99,10 @@ is what keeps one turn from paying for recall on every step.
 - **A trigger is a phrase, and it counts only whole.** Every word of the phrase must be present for
   the trigger to score at all. This is what stops a generic word from carrying a specific phrase — a
   message containing "denied" does not match the trigger "dotnet pipe denied". Without this rule, a
-  phrase's specific weight leaks into every message that shares one of its words.
+  phrase's specific weight leaks into every message that shares one of its words. A matched phrase
+  also counts one hit per word, so a three-word phrase clears the two-hit floor on its own; that is
+  what lets a short message ("mcp 挂了") recall one entry without lowering the floor for ordinary
+  single words.
 - **Threshold:** at least `minRecallHits` distinct tokens (default 2) and a weighted score of at
   least `minRecallScore` (default 4). Two independent conditions, because a single high-weight token
   should not be enough and a pile of body hits should not be either.

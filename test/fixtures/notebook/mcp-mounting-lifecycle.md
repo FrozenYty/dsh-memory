@@ -1,5 +1,5 @@
 ---
-triggers: mcp, 挂载, 工具消失, 服务器, 转义, 配置
+triggers: mcp, 挂载, 工具消失, 转义, mcp 挂了, mcp 连不上, 工具 不见了
 ---
 
 # Mounting an MCP server: the whole lifecycle

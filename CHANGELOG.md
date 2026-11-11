@@ -7,6 +7,24 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-11-11
+
+### Changed
+
+- A matched trigger phrase now counts one hit per word instead of one, so a three-word phrase clears
+  the two-hit floor by itself. This is what lets a short message recall the right entry without
+  lowering the floor for ordinary single words — `mcp 挂了` recalls the MCP entry, while a bare
+  generic word still does not recall anything.
+
+### Fixed
+
+- Recall vocabulary retuned against measured false positives: generic single words (`服务器`, `配置`,
+  `写入`, `目录`, `权限`, `api`, `安装`, `依赖`) were removed or folded into phrases, and colloquial
+  phrases (`mcp 挂了`, `相机 打不开`, `pio`) were added. Measured on a real notebook: 0 false positives
+  across 14 off-topic queries, 0 misses across 11 on-topic ones (previously 5 misses and 1 false
+  positive). Triggers live in the notebook, not in this repository — the matching rule is the only
+  code change here.
+
 ## [0.6.0] — 2026-11-11
 
 ### Added
@@ -106,7 +124,8 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory-notebook/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/FrozenYty/dsh-memory-notebook/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.7.0
 [0.6.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.6.0
 [0.5.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.5.0
 [0.4.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.4.0

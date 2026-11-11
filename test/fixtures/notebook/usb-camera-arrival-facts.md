@@ -1,5 +1,5 @@
 ---
-triggers: camera, 相机, 摄像头, 权限, 打不开, 白平衡, 曝光, 黑帧
+triggers: camera, 相机, 摄像头, 白平衡, 曝光, 黑帧, 打不开, 黑屏, 相机 打不开
 ---
 
 # The USB camera on this machine — 2026-11-10
