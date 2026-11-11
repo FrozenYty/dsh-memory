@@ -1,4 +1,4 @@
-# dsh-memory-notebook
+# dsh-memory
 
 English | [中文](README-zh.md)
 
@@ -101,7 +101,7 @@ A first install activates through hot reload. Replacing an already-installed cop
 
 ## Configure
 
-Set values under the `memory-notebook` row in the profile's `cordis.patch.yml`. This bundle declares no
+Set values under the `memory` row in the profile's `cordis.patch.yml`. This bundle declares no
 `Config` schema, so values are taken as given; the defaults below are applied in code.
 
 | Key | Default | Meaning |

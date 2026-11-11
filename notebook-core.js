@@ -1,5 +1,5 @@
 /**
- * Pure notebook logic for dsh-memory-notebook: filesystem scanning, index rendering and
+ * Pure notebook logic for dsh-memory: filesystem scanning, index rendering and
  * message-to-entry matching. No harness imports live here, so this module is directly
  * testable and the plugin entry stays thin.
  */
@@ -7,7 +7,7 @@ import { accessSync, appendFileSync, constants, existsSync, mkdirSync, readdirSy
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 
-export const INDEX_TAIL = '\n</memory-notebook>'
+export const INDEX_TAIL = '\n</memory>'
 
 export const RECALL_HEAD =
   '<memory-recall>\n' +
@@ -33,7 +33,7 @@ const CJK_CHAR = /[\u3400-\u9fff]/
 export function indexHead(where, hasPolicy = false) {
   const policy = hasPolicy ? " `notebook-policy.md` holds this notebook's own rules." : ''
   return (
-    '<memory-notebook>\n' +
+    '<memory>\n' +
     `Notes live in \`${where}\`, one file per subject. Each name is a trigger: ` +
     'if a name matches what you are about to do, read it with `memory_read` before acting. ' +
     "Do not guess an entry's content from its name." +
