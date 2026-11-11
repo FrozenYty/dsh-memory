@@ -27,8 +27,8 @@ import {
   buildIndex,
   diagnoseNotebook,
   ensurePolicyEntry,
-  indexBudgetVerdict,
   indexDrift,
+  indexResidency,
   loadNotebook,
   normalizeKey,
   pickHits,
@@ -422,15 +422,31 @@ export function apply(ctx, config) {
         schema: {
           type: 'object',
           additionalProperties: false,
-          required: ['name', 'operation', 'status'],
+          required: ['name', 'operation', 'status', 'indexResident', 'indexOverflow'],
           properties: {
             name: { type: 'string' },
             operation: { type: 'string' },
             status: { type: 'string' },
+            indexResident: {
+              type: 'boolean',
+              description: 'Whether this entry appears in the injected index',
+            },
+            indexOverflow: {
+              type: 'number',
+              description:
+                'Entries now past the index budget because this one took a line. They stay recallable and memory_list names them, but the model cannot see them unprompted.',
+            },
           },
         },
         render: (_args, value) => [
-          { type: 'text', text: `Memory ${value.operation}: ${value.name}.md [${value.status}]` },
+          {
+            type: 'text',
+            text:
+              `Memory ${value.operation}: ${value.name}.md [${value.status}]` +
+              (value.indexOverflow > 0
+                ? ` — ${value.indexOverflow} other entry(ies) are now past the index budget; memory_health lists them`
+                : ''),
+          },
         ],
       },
       async execute(args, exec) {
@@ -443,23 +459,16 @@ export function apply(ctx, config) {
         if (evidence.length === 0) throw new Error('a memory needs evidence: the command or error that proves it')
         const status = args.status === 'verified' ? 'verified' : 'candidate'
 
-        // Write-time rejection: an index that is truncated is worse than one that is full. The
-        // entries past the cut are never injected, so they may as well not exist, and nothing
-        // reports that they were dropped. Refuse the write and say how to make room; the fact is
-        // still in the conversation, so nothing is lost by waiting.
+        // The index budget caps what is resident, not what can be stored. A write always lands; what
+        // is worth reporting is whether this entry will be visible in the injected index, and how many
+        // others stopped being visible to make room. Refusing the write, as this once did, protected
+        // nothing and discouraged recording a fact at all.
         const existing = entriesFor(exec)
         const file = `${key}.md`
-        if (!existing.some((entry) => entry.file === file)) {
-          const verdict = indexBudgetVerdict(existing, cfg, file)
-          if (!verdict.ok) {
-            throw new Error(
-              `the index is full: ${verdict.current} of ${verdict.budget} characters now, ` +
-                `${verdict.after} with "${file}". Nothing was written. Retire or merge an entry ` +
-                `first — memory_verify with status "disputed" frees a line, or fold two entries into ` +
-                `one with memory_write — then write this again.`,
-            )
-          }
-        }
+        const isNew = !existing.some((entry) => entry.file === file)
+        const residency = isNew
+          ? indexResidency(existing, cfg, { file, status })
+          : { resident: true, shown: 0, hidden: 0 }
 
         const created = writeEntryFile(dirs[0], {
           key,
@@ -469,7 +478,13 @@ export function apply(ctx, config) {
           body: String(args.body ?? '').slice(0, 4000),
           evidence: evidence.slice(0, 300),
         })
-        return { name: key, operation: created ? 'created' : 'updated', status }
+        return {
+          name: key,
+          operation: created ? 'created' : 'updated',
+          status,
+          indexResident: residency.resident,
+          indexOverflow: residency.hidden,
+        }
       },
     }),
   )
@@ -569,7 +584,8 @@ export function apply(ctx, config) {
             'indexAgrees',
             'indexChars',
             'indexBudget',
-            'indexSlotsLeft',
+            'indexResident',
+            'indexOverflow',
             'disputed',
             'withoutTriggers',
             'withoutEvidence',
@@ -588,7 +604,12 @@ export function apply(ctx, config) {
             indexAgrees: { type: 'boolean', description: 'INDEX.md matches the directory in both directions' },
             indexChars: { type: 'number' },
             indexBudget: { type: 'number' },
-            indexSlotsLeft: { type: 'number', description: 'Estimated further entries before the index truncates' },
+            indexResident: { type: 'number', description: 'Entries named in the injected index' },
+            indexOverflow: {
+              type: 'number',
+              description:
+                'Entries past the budget: recall still matches them and memory_list names them, but the model cannot see them unprompted',
+            },
             disputed: { type: 'number' },
             withoutTriggers: { type: 'array', items: { type: 'string' } },
             withoutEvidence: { type: 'array', items: { type: 'string' } },

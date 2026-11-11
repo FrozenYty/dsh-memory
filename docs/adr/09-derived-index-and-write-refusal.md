@@ -1,8 +1,13 @@
 # 0009 — The index is derived data, and a write that would truncate it is refused
 
-- **Status:** Accepted
+- **Status:** Partially superseded by [0014](14-index-budget-is-residency.md) — the derived index
+  stands; the write refusal was withdrawn
 - **Date:** 2026-11-11
 - **Supersedes:** part of [0002](02-filename-index-without-descriptions.md) (the index is no longer a hand-maintained document)
+
+> The derived index decided here is unchanged. The second half — refusing a write that would push the
+> injected index past its budget — was withdrawn in ADR 0014, because the budget was redesigned to cap
+> residency rather than capacity, which removes the silence the refusal existed to prevent.
 
 ## Context
 

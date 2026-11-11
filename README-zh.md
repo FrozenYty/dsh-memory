@@ -51,7 +51,7 @@ schema，配置值原样接收；下表默认值写在代码里。
 | `workspaceDir` | `.agents/memory` | notebook 目录，相对会话工作目录。`''` 关闭这一层。 |
 | `machineDir` | `''` | 可选的机器级层，绝对路径或 `~` 开头。工作区层优先，同名条目以工作区为准。 |
 | `showIndex` | `true` | 注入文件名索引。 |
-| `indexBudgetChars` | `1400` | 索引段的字符上限。 |
+| `indexBudgetChars` | `1400` | 索引段的字符上限。它限制的是**列出多少条**，不是能存多少条——超出部分仍可被召回，`memory_list` 也能列出 |
 | `recallEnabled` | `true` | 本轮发布命中的条目。 |
 | `recallBudgetChars` | `1400` | 单次召回发布的字符上限。 |
 | `maxRecall` | `2` | 一条消息最多发布几条。 |

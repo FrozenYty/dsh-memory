@@ -189,27 +189,68 @@ export function loadNotebook(config, cwd) {
   return entries
 }
 
-/** The injected index: bare filenames only, capped, empty string for an empty notebook. */
-export function buildIndex(entries, config) {
+/**
+ * How the index names the entries it could not fit. The count is the load-bearing part: a model that
+ * cannot see that something was omitted has no reason to look further, and an entry it never sees may
+ * as well not exist. Returning a bare ellipsis, as this did, hid both the size of the gap and the way
+ * to close it.
+ */
+function overflowLine(hidden) {
+  return `- … and ${hidden} more, all listed by \`memory_list\`\n`
+}
+
+/**
+ * The injected index, and the count of what it left out.
+ *
+ * `indexBudgetChars` caps what is **resident**, not what the notebook can hold. Every entry stays
+ * reachable: recall matches against all of them, and `memory_list` names them. So the budget is a
+ * token decision, and the capacity is unbounded — which is the point of separating them, because a
+ * single cap cannot serve both.
+ *
+ * Entries are taken in notebook order, which is "most likely first" as the user arranged it, with
+ * newly written entries placed at the top by `syncIndexFile`.
+ */
+export function buildIndexDetail(entries, config) {
   const visible = entries.filter((entry) => entry.status !== 'disputed')
-  if (visible.length === 0) return ''
+  if (visible.length === 0) return { text: '', shown: 0, hidden: 0 }
+
+  const where = config.workspaceDir.length > 0 ? config.workspaceDir : config.machineDir
   const hasPolicy = visible.some((entry) => entry.key === 'notebook-policy')
-  const head = indexHead(
-    config.workspaceDir.length > 0 ? config.workspaceDir : config.machineDir,
-    hasPolicy,
-  )
-  const lines = []
+  const head = indexHead(where, hasPolicy)
+
+  const chosen = []
   let used = head.length + INDEX_TAIL.length
   for (const entry of visible) {
     const line = `- ${entry.file}\n`
-    if (used + line.length > config.indexBudgetChars) {
-      lines.push('- …\n')
-      break
-    }
-    lines.push(line)
+    if (used + line.length > config.indexBudgetChars) break
+    chosen.push({ line })
     used += line.length
   }
-  return head + lines.join('') + INDEX_TAIL
+
+  // One name is worth more than none. With a budget near or below the header's own length the index
+  // would otherwise list no entries at all — telling the model a notebook exists without telling it
+  // anything that is in it. Overshooting by one line is the better failure.
+  let hidden = visible.length - chosen.length
+  if (chosen.length === 0) {
+    chosen.push({ line: `- ${visible[0].file}\n` })
+    used += visible[0].file.length + 3
+    hidden = visible.length - 1
+  }
+
+  // The overflow line costs characters too, so it may have to displace the last entry to fit. Without
+  // this the index could exceed its budget by exactly the length of the notice.
+  while (hidden > 0 && chosen.length > 1 && used + overflowLine(hidden).length > config.indexBudgetChars) {
+    used -= chosen.pop().line.length
+    hidden += 1
+  }
+
+  const overflow = hidden > 0 ? overflowLine(hidden) : ''
+  return { text: head + chosen.map((c) => c.line).join('') + overflow + INDEX_TAIL, shown: chosen.length, hidden }
+}
+
+/** The injected index as text. Empty for an empty notebook. */
+export function buildIndex(entries, config) {
+  return buildIndexDetail(entries, config).text
 }
 
 // ---------------------------------------------------------------------------
@@ -519,7 +560,11 @@ export function syncIndexFile(dir, entries = scanDir(dir)) {
     .filter((entry) => !listedSet.has(entry.file))
     .sort((a, b) => b.mtimeMs - a.mtimeMs)
     .map((entry) => entry.file)
-  const wanted = [...listed, ...added]
+  // New entries go to the top, not the bottom. Residency in the injected index is finite, and what
+  // was just learned is the most likely thing to be needed next — appending put it last, so a notebook
+  // at its budget would hide a fact the moment it was written. Existing order is never reshuffled, so
+  // a hand-arranged "most likely first" survives.
+  const wanted = [...added, ...listed]
   if (wanted.length === 0) return false
 
   const text = INDEX_PREAMBLE + wanted.map((file) => `- \`${file}\`\n`).join('')
@@ -536,36 +581,19 @@ export function syncIndexFile(dir, entries = scanDir(dir)) {
 }
 
 /**
- * The exact length the injected index would have if `extraFiles` were added.
+ * Where a newly written entry lands: on the resident index, or past the cut.
  *
- * Mirrors `buildIndex` so the write-time decision matches what the model would actually receive —
- * an estimate that drifts from the renderer would either refuse writes that fit or admit writes
- * that get truncated.
- */
-export function projectedIndexChars(entries, config, extraFiles = []) {
-  const files = new Set(entries.filter((entry) => entry.status !== 'disputed').map((entry) => entry.file))
-  for (const file of extraFiles) files.add(file)
-  if (files.size === 0) return 0
-  const head = indexHead(config.workspaceDir.length > 0 ? config.workspaceDir : config.machineDir)
-  let total = head.length + INDEX_TAIL.length
-  for (const file of files) total += file.length + 3 // "- " + name + "\n"
-  return total
-}
-
-/**
- * Would adding this entry push the injected index past its budget?
+ * The budget no longer refuses a write, because it no longer protects anything. A write always lands
+ * on disk; recall matches every entry; `memory_list` names them all. Refusing only pushed the model
+ * toward not recording something worth keeping, which is the worse failure — a fact never written is
+ * gone, while a fact past the cut is one `memory_list` away.
  *
- * An index that is truncated is worse than one that is short: the entries past the cut are never
- * injected, so they may as well not exist, and nothing reports that they were dropped. Refusing the
- * write protects the fact itself — it stays in the conversation, and the model is told to make room
- * instead of losing it silently.
+ * What is worth reporting is the cost: how many entries became non-resident because this one took a
+ * line. The new entry itself goes to the top, so it is resident whenever anything is.
  */
-export function indexBudgetVerdict(entries, config, newFile) {
-  const budget = config.indexBudgetChars
-  const current = projectedIndexChars(entries, config)
-  const after = projectedIndexChars(entries, config, [newFile])
-  if (after <= budget) return { ok: true, current, after, budget }
-  return { ok: false, current, after, budget }
+export function indexResidency(entries, config, newEntry) {
+  const detail = buildIndexDetail([{ ...newEntry, mtimeMs: Date.now() }, ...entries], config)
+  return { resident: detail.shown > 0, shown: detail.shown, hidden: detail.hidden }
 }
 
 // ---------------------------------------------------------------------------
@@ -597,7 +625,8 @@ export function diagnoseNotebook(config, cwd) {
     indexAgrees: false,
     indexChars: 0,
     indexBudget: config.indexBudgetChars,
-    indexSlotsLeft: 0,
+    indexResident: 0,
+    indexOverflow: 0,
     disputed: 0,
     withoutTriggers: [],
     withoutEvidence: [],
@@ -644,19 +673,17 @@ export function diagnoseNotebook(config, cwd) {
     problems.push(`${drift.missing.length} line(s) in INDEX.md name files that no longer exist`)
   }
 
-  const chars = projectedIndexChars(entries, config)
+  const detail = buildIndexDetail(entries, config)
+  const chars = detail.text.length
   const budget = config.indexBudgetChars
-  if (chars > budget) {
-    problems.push(`the index needs ${chars} characters and the budget is ${budget}: entries past the cut are never injected`)
+  if (detail.hidden > 0) {
+    // Degraded, not broken: recall still matches every entry and `memory_list` names them all. But the
+    // model cannot see them, so it will not read them on its own — which is worth saying out loud.
+    problems.push(
+      `${detail.hidden} entry(ies) are past the index budget: recall still matches them and memory_list names them, ` +
+        `but the model cannot see them unprompted`,
+    )
   }
-
-  // Average filename length, so "how many more fit" is an estimate rather than a guess about the
-  // unknown name of a future entry.
-  const averageFileChars =
-    entries.length === 0
-      ? 30
-      : Math.round(entries.reduce((sum, entry) => sum + entry.file.length + 3, 0) / entries.length)
-  const slotsLeft = Math.max(0, Math.floor((budget - chars) / averageFileChars))
 
   const withoutTriggers = entries.filter((entry) => entry.status !== 'disputed' && (entry.triggers ?? []).length === 0)
   if (withoutTriggers.length > 0) {
@@ -672,11 +699,14 @@ export function diagnoseNotebook(config, cwd) {
   const policy = entries.some((entry) => entry.key === 'notebook-policy')
   if (!policy) problems.push('no notebook-policy entry: the rules for this notebook are missing')
 
-  const status = writable && drift.unlisted.length === 0 && drift.missing.length === 0 && chars <= budget
-    ? problems.length === 0
-      ? 'ok'
-      : 'degraded'
-    : 'broken'
+  // The budget is no longer part of this: it caps what is resident, and overflow is a `degraded`
+  // problem recorded above rather than a broken notebook.
+  const status =
+    writable && drift.unlisted.length === 0 && drift.missing.length === 0
+      ? problems.length === 0
+        ? 'ok'
+        : 'degraded'
+      : 'broken'
 
   return {
     status,
@@ -685,7 +715,8 @@ export function diagnoseNotebook(config, cwd) {
     indexAgrees: drift.unlisted.length === 0 && drift.missing.length === 0,
     indexChars: chars,
     indexBudget: budget,
-    indexSlotsLeft: slotsLeft,
+    indexResident: detail.shown,
+    indexOverflow: detail.hidden,
     disputed: entries.length - visible.length,
     withoutTriggers: withoutTriggers.map((entry) => entry.key),
     withoutEvidence: withoutEvidence.map((entry) => entry.key),
