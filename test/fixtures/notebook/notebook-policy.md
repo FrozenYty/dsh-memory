@@ -127,5 +127,5 @@ together: the rules and the entries they govern cannot get out of step, and noth
 until it is needed. It appears in `INDEX.md` like any other entry.
 
 Evidence: policy, not a fact — there is no command to re-run. Valid while
-`dsh-memory-notebook` reads this directory; if the plugin is gone, the notebook still explains
+`dsh-memory` reads this directory; if the plugin is gone, the notebook still explains
 itself.
