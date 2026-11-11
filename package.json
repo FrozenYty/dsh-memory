@@ -1,0 +1,49 @@
+{
+  "name": "@local/dsh-memory-notebook",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Low-token memory notebook for DeepSeek Harness: indexes .agents/memory files in the system prompt and recalls only the entries a message actually matches.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FrozenYty/dsh-memory-notebook.git"
+  },
+  "bugs": {
+    "url": "https://github.com/FrozenYty/dsh-memory-notebook/issues"
+  },
+  "homepage": "https://github.com/FrozenYty/dsh-memory-notebook#readme",
+  "scripts": {
+    "test": "node test-core.mjs"
+  },
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "notebook-core.js",
+    "cordis.patch.yml",
+    "README.md",
+    "test-core.mjs",
+    "locale/*.json",
+    "icon.svg"
+  ],
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "dsh": {
+    "manifestVersion": 1,
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh-plugin",
+    "memory"
+  ]
+}

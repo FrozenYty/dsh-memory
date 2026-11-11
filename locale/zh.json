@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "记忆笔记本",
+    "description": "把 .agents/memory 里的笔记索引注入系统提示，并只在消息真正命中时召回那一条。"
+  }
+}

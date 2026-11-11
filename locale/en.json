@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Memory notebook",
+    "description": "Indexes your .agents/memory notes in the system prompt and surfaces only the one a message actually matches."
+  }
+}

@@ -1,0 +1,39 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The commit-message check reads every commit in the pull request, not only the tip.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Syntax
+        run: |
+          node --check index.js
+          node --check notebook-core.js
+          for script in scripts/*.mjs; do node --check "$script"; done
+
+      - name: Tests
+        run: node test-core.mjs
+
+      - name: No machine-specific paths
+        run: node scripts/check-paths.mjs
+
+      - name: Documents consistent
+        run: node scripts/check-docs.mjs
+
+      - name: No tool credited as a co-author
+        if: github.event_name == 'pull_request'
+        run: node scripts/check-commit-messages.mjs --range "origin/${{ github.base_ref }}..HEAD"
