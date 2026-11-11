@@ -58,6 +58,7 @@ together. Read this before adding, moving or renaming a document.
 | [0012](adr/12-health-check.md) | Capability is diagnosed separately from results | Accepted |
 | [0013](adr/13-usage-counts.md) | Recall usage is counted per entry, and records nothing else | Accepted |
 | [0014](adr/14-index-budget-is-residency.md) | The index budget caps residency, not capacity | Accepted |
+| [0015](adr/15-recall-is-model-driven-by-default.md) | Recall is model-driven by default | Accepted |
 
 Add a row here whenever an ADR is added. `scripts/check-docs.mjs` fails the build when an ADR
 exists on disk but is not listed in this table.

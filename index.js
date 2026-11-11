@@ -81,7 +81,13 @@ const DEFAULTS = {
   machineDir: '',
   showIndex: true,
   indexBudgetChars: 1400,
-  recallEnabled: true,
+  /**
+   * Automatic recall is OFF by default. The index names every entry and its header tells the model to
+   * read one with `memory_read` when a name matches, so the model decides — which is how a lexical
+   * matcher's false positives are avoided rather than tuned down. See
+   * docs/adr/15-recall-is-model-driven-by-default.md.
+   */
+  recallEnabled: false,
   recallBudgetChars: 1400,
   maxRecall: 2,
   minRecallScore: 4,
@@ -527,7 +533,7 @@ export function apply(ctx, config) {
     defineTool({
       name: 'memory_usage',
       description:
-        'Report which entries recall has ever published, and which it never has. An entry that has been recalled many times and opened once is doing nothing, and nothing else in the plugin notices; a total would hide the one entry nobody uses. Counted per entry, and at most once per session, because an entry already injected in a session is not injected again — so the count is sessions reached, not matches found. Records entry names and dates only, never the query. Use when deciding what to retire, or when the notebook feels larger than its usefulness.',
+        'Report which entries automatic recall has ever published, and which it never has. An entry that has been recalled many times and opened once is doing nothing, and nothing else in the plugin notices; a total would hide the one entry nobody uses. Counted per entry, and at most once per session, because an entry already injected in a session is not injected again — so the count is sessions reached, not matches found. Records entry names and dates only, never the query. NOTE: this counts automatic recall only, which is off by default; a notebook used entirely through memory_read will report every entry as never used, and that means unmeasured, not unused. Use when deciding what to retire only on a profile with recallEnabled: true.',
       parameters: { type: 'object', additionalProperties: false, properties: {} },
       output: {
         schema: {

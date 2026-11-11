@@ -1,0 +1,24 @@
+{
+  "why": "Ordinary talk that shares vocabulary with the notebook. Any recall here is a false positive, except where marked. This set exists because test/qrels.json's off-topic queries were written by the same author as the triggers, so they avoid the words that misfire; these do not.",
+  "reviewed": "2026-11-11",
+  "cases": [
+    { "query": "帮我重启一下服务", "expect": "silent" },
+    { "query": "这个路径写得对吗", "expect": "silent" },
+    { "query": "下载完了叫我", "expect": "silent" },
+    { "query": "配置帮我改一下", "expect": "silent", "note": "borderline: would be correct if the conversation were about plugin config" },
+    { "query": "参数传错了", "expect": "silent" },
+    { "query": "笔记本屏幕有点暗", "expect": "silent", "note": "笔记本 means laptop here, not the memory notebook" },
+    { "query": "这个索引怎么建的", "expect": "silent", "note": "borderline: a database index, not the memory index" },
+    { "query": "证书考试过了", "expect": "silent", "note": "an exam certificate, not TLS" },
+    { "query": "工具都准备好了吗", "expect": "silent" },
+    { "query": "打包一下发给同事", "expect": "silent" },
+    { "query": "插件挺多的", "expect": "silent", "note": "a remark about nothing, pulled two plugin entries" },
+    { "query": "源码在哪来着", "expect": "silent" },
+    { "query": "触发器怎么用", "expect": "silent" },
+    { "query": "这个函数写得不错", "expect": "silent" },
+    { "query": "明天记得提交", "expect": "silent" },
+    { "query": "文件我放在桌面了", "expect": "silent" },
+    { "query": "把这段代码抽出来", "expect": "recall", "want": "extraction-uncovers-the-original-caller", "note": "genuinely on-topic: that entry is about extracting a layer" },
+    { "query": "相机拍的照片发我", "expect": "recall", "want": "usb-camera-arrival-facts", "note": "genuinely on-topic: the camera entry" }
+  ]
+}

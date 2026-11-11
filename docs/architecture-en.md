@@ -229,18 +229,41 @@ matching rules and the vocabulary have to be tuned together; neither is correct 
 
 ### What it measures
 
-Three sets, run against the author's 25-entry notebook and committed as
-[`test/qrels.json`](../test/qrels.json):
+Four sets, run against the author's notebook. The first three are committed as
+[`test/qrels.json`](../test/qrels.json); the fourth is the one that changed the default.
 
 | Set | Result | What it means |
 |---|---|---|
-| Queries in the notebook's own vocabulary | 52/52 (11/11 in the earlier set) | the rules work as designed |
-| Written blind, avoiding that vocabulary | **3/14** | the rules do not generalise |
-| Off-topic queries sharing vocabulary | 0/24 false positives | precision holds |
+| Queries in the notebook's own vocabulary | 52/52 | the rules work as designed |
+| Written blind, avoiding that vocabulary | 6/18 | the rules generalise poorly |
+| Off-topic queries sharing vocabulary | 0/24 false positives | precision holds — on a set the author wrote |
+| **Ordinary talk sharing vocabulary** | **5/18 fired** | precision does not hold on a set the author did not write |
 
-The middle row is the honest headline. Ten of those fourteen scored **zero** — they matched nothing at
-all, not "matched the wrong entry". The diagnosis was not a threshold problem: every trigger had been
-written by the author in the entry's technical register, while the question described a symptom.
+The third and fourth rows disagree because of who wrote them. `qrels.json`'s off-topic queries were
+composed by the same person who composed the triggers, so they avoid the words that would have
+misfired; "证书考试过了", "笔记本屏幕有点暗" and "插件挺多的" were not composed to be fair. They fire
+because a Chinese word of two or more characters counts two hits — a rule added so `相机` could recall
+alone — and that lets `证书`, `笔记本`, `插件`, `配置` and `索引` recall alone too.
+
+A threshold sweep shows the gate cannot separate the two populations:
+
+```
+score hits | recall | false positives
+    4    2 |  6/18  |  5/18
+    5    2 |  6/18  |  5/18
+    6    2 |  2/18  |  1/18
+    8    2 |  1/18  |  0/18
+    4    3 |  1/18  |  0/18
+```
+
+Correct recalls and false positives both score 4–5 — each is "one generic term plus one specific one" —
+so the cliff between 5 and 6 costs four of six correct recalls. **This is why the fix was not a
+threshold.** `recallEnabled` now defaults to false and the model reads the index itself; see
+[ADR 0015](adr/15-recall-is-model-driven-by-default.md).
+
+Ten of the fourteen blind queries scored **zero** — matched nothing at all, not "matched the wrong
+entry". The diagnosis was vocabulary: every trigger had been written by the author in the entry's
+technical register, while the question described a symptom.
 
 | Typed | Listed |
 |---|---|

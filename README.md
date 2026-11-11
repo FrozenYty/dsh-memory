@@ -31,8 +31,10 @@ This plugin takes the second shape and fixes two things: *when to look*, and *wh
 1. **A resident index.** The notebook's filenames are appended to the system prompt as a small
    section. No descriptions, so the list cannot decay into truncated prose. An empty notebook injects
    **zero bytes** — the section disappears entirely.
-2. **Recall on match.** When a message matches an entry, that entry is published for that turn through
-   the runtime-context channel. Each entry at most once per session.
+2. **The model reads what it needs.** The index header tells it to call `memory_read` when a name
+   matches what it is about to do. **Nothing is injected automatically** — see
+   [How well it works](#how-well-it-works) for the measurements behind that, and `recallEnabled` to
+   opt into automatic matching instead.
 3. **Seven tools** to read, write, verify, audit, diagnose and account for entries — with evidence
    required on every write.
 
@@ -43,18 +45,47 @@ copy. [docs/architecture-en.md](docs/architecture-en.md) explains why the parts 
 
 ## How well it works
 
-Measured on a 25-entry notebook, both directions, with the judged query set committed in
+Two things are measured here, and the second one is why automatic recall is off by default.
+
+**Matching quality**, on a 29-entry notebook, both directions at once, with the judged set committed in
 [`test/qrels.json`](test/qrels.json):
 
-| | |
+| Query set | Result |
 |---|---|
-| Queries phrased in the notebook's own vocabulary | **11/11** |
-| Queries written blind, avoiding that vocabulary | **3/14** |
-| Off-topic queries that stay silent | **0 false positives in 24** |
+| On-topic questions in the notebook's own vocabulary | 52/52 |
+| New phrasings, written from the situation | 6/18 |
+| Off-topic queries in `test/qrels.json` | 0/24 fired |
 
-The gap between those first two rows is the whole story. Matching is lexical: it compares words. When
-you describe a problem in terms the entry already uses, it fires. When you describe the *symptom* and
-the entry records the *mechanism* — you say "拍出来一片黑", the entry says "黑帧" — it does not.
+**And then the set nobody writes for themselves** — ordinary talk that merely shares vocabulary with the
+notebook:
+
+| Typed | What it pulled in |
+|---|---|
+| 证书考试过了 | the TLS entry — *证书* is also how you say "certificate" for an exam |
+| 笔记本屏幕有点暗 | the notebook policy — *笔记本* is also "laptop" |
+| 插件挺多的 | two plugin entries, from a remark about nothing |
+| **Ordinary talk sharing vocabulary** | **5/18 fired** |
+
+The 24 clean queries in `qrels.json` were written by the same person who wrote the triggers, which is
+exactly why they are clean. The hostile set was not.
+
+**Raising the gate does not separate them.** Correct recalls and false positives both score 4–5, and
+lifting the floor to 6 costs four of six correct recalls to remove four of five false positives:
+
+```
+score | recall | false positives
+  4   |  6/18  |  5/18
+  5   |  6/18  |  5/18
+  6   |  2/18  |  1/18
+  8   |  1/18  |  0/18
+```
+
+So the default is what Claude Code does: **the index names every entry, and the model reads one when a
+name matches.** No matcher, no false positives.
+
+When it does match, it is lexical: it compares words. Describe a problem in terms the entry already
+uses and it fires; describe the *symptom* while the entry records the *mechanism* — you say "拍出来一片
+黑", the entry says "黑帧" — and it does not. That is the limit `recallEnabled: true` inherits.
 
 So the useful mental model is **a well-indexed notebook the agent can see and open**, not an assistant
 that remembers on your behalf. What it does reliably is never get in the way: zero false recalls, zero
@@ -110,7 +141,7 @@ Set values under the `memory` row in the profile's `cordis.patch.yml`. This bund
 | `machineDir` | `''` | Optional machine-wide tier, absolute or `~`-prefixed. The workspace tier wins name collisions. |
 | `showIndex` | `true` | Inject the filename index. |
 | `indexBudgetChars` | `1400` | Ceiling on how many entries are **named** in the index, not on how many the notebook may hold. Entries past it are counted in the index and stay recallable. |
-| `recallEnabled` | `true` | Publish a matching entry for the turn. |
+| `recallEnabled` | `false` | Publish a matching entry for the turn. Off by default: a lexical matcher cannot tell *证书错误* from *证书考试*. |
 | `recallBudgetChars` | `1400` | Ceiling on one recall publication. |
 | `maxRecall` | `2` | Maximum entries published for one message. |
 | `minRecallScore` | `4` | Weighted score floor (trigger phrase 5–7, filename 4, title 3, body 1). |
