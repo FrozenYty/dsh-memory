@@ -209,6 +209,44 @@ check(
   pickHits(scanDir(writeDir), 'pwsh here-string backtick quoting', config).length === 0,
 )
 
+// An update that omits triggers must not erase them: the entry would survive but stop being
+// findable, and nothing else reports that.
+const keepDir = mkdtempSync(join(tmpdir(), 'mn-keep-'))
+writeEntryFile(keepDir, {
+  key: 'keep-triggers',
+  title: 'Keep triggers',
+  status: 'candidate',
+  triggers: 'alpha, beta',
+  body: 'first',
+  evidence: 'one',
+})
+writeEntryFile(keepDir, {
+  key: 'keep-triggers',
+  title: 'Keep triggers, revised',
+  status: 'candidate',
+  body: 'second',
+  evidence: 'two',
+})
+const kept = scanDir(keepDir)[0]
+check(
+  'an update without triggers keeps the old ones',
+  kept.triggers.includes('alpha') && kept.triggers.includes('beta'),
+  kept.triggers.join(',') || '(none)',
+)
+writeEntryFile(keepDir, {
+  key: 'keep-triggers',
+  title: 'Keep triggers, third',
+  status: 'candidate',
+  triggers: 'gamma',
+  body: 'third',
+  evidence: 'three',
+})
+check(
+  'an update with triggers replaces them',
+  scanDir(keepDir)[0].triggers.join(',') === 'gamma',
+  scanDir(keepDir)[0].triggers.join(','),
+)
+
 // ---------------------------------------------------------------------------
 console.log('\n[7] evidence hygiene')
 // ---------------------------------------------------------------------------
@@ -316,7 +354,7 @@ writeFileSync(join(readOnlyDir, 'broken.md'), '---\nstatus: candidate\n---\nno h
 const broken = scanDir(readOnlyDir)
 check('an entry without a heading still loads', broken.length === 1 && broken[0].title === 'broken')
 
-for (const dir of [emptyDir, writeDir, readOnlyDir, writtenDir, seedRoot, driftDir]) {
+for (const dir of [emptyDir, writeDir, readOnlyDir, writtenDir, seedRoot, driftDir, keepDir]) {
   try {
     rmSync(dir, { recursive: true, force: true })
   } catch {

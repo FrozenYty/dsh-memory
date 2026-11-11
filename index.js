@@ -177,6 +177,9 @@ export function apply(ctx, config) {
       text: (context) => {
         const sessionId = sessionIdOf(context)
         if (sessionId === undefined) return ''
+        // Seed here too, not only from the index section: a profile that turns the index off but
+        // keeps recall on would otherwise never seed the policy.
+        seedPolicyOnce(cwdOf(context))
         const query = queryBySession.get(sessionId)
         if (query === undefined || query.length < cfg.minQueryChars) return ''
         const cached = recallBySession.get(sessionId)
