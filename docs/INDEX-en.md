@@ -45,6 +45,7 @@ together. Read this before adding, moving or renaming a document.
 | [0004](adr/04-bilingual-triggers.md) | Entries carry explicit recall words, in the author's own language | Accepted |
 | [0005](adr/05-trust-status-and-mandatory-evidence.md) | Every write carries evidence; trust is a three-state field | Accepted |
 | [0006](adr/06-evidence-audit-by-age.md) | Evidence is audited by age and completeness, never by execution | Accepted |
+| [0007](adr/07-policy-in-the-notebook.md) | The notebook's policy lives in the notebook, not in a skill | Accepted |
 
 Add a row here whenever an ADR is added. `scripts/check-docs.mjs` fails the build when an ADR
 exists on disk but is not listed in this table.

@@ -35,7 +35,8 @@ export function indexHead(where) {
     '<memory-notebook>\n' +
     `Notes live in \`${where}\`, one file per subject. Each name is a trigger: ` +
     'if a name matches what you are about to do, read it with `memory_read` before acting. ' +
-    "Do not guess an entry's content from its name.\n"
+    "Do not guess an entry's content from its name. `notebook-policy.md` holds this " +
+    'notebook\'s own rules.\n'
   )
 }
 
