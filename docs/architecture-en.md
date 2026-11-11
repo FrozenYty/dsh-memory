@@ -33,13 +33,16 @@ indexed, a deleted one drops out — and the human owns the order, because "most
 judgement no script can make. `syncIndexFile` runs on every plugin write, on a status change, and once
 per directory per process, so a directory changed by another tool is reconciled rather than left to rot.
 
-A write that would push the injected index past `indexBudgetChars` is **refused before it lands**. The
-reason is not that a long index is ugly: it is that `buildIndex` truncates, and an entry past the cut
-is never injected — it may as well not exist, and nothing reports that it was dropped. Refusing keeps
-the fact in the conversation and tells the model how to make room (retire an entry, or fold two into
-one). An update to an existing entry never grows the list, so it is always allowed.
+`indexBudgetChars` caps what is **resident**, not what the notebook can hold. Entries past it are
+counted in the index — `… and N more, all listed by memory_list` — because a counted omission is not a
+silent one; every entry stays recallable and `memory_list` names them. New entries go to the **top** of
+`INDEX.md`: residency is finite, and what was just learned is the most likely thing to be needed next.
+Appending put it last, so a notebook at its budget hid a fact the moment it was written.
 
-See [ADR 0009](adr/09-derived-index-and-write-refusal.md).
+A write therefore never fails on budget. It reports `indexResident` and `indexOverflow` instead, so the
+writer learns whether the entry is visible and what it cost. See
+[ADR 0009](adr/09-derived-index-and-write-refusal.md) for the derived index and
+[ADR 0014](adr/14-index-budget-is-residency.md) for why the refusal was withdrawn.
 
 ## Knowing whether it is working
 
@@ -142,9 +145,10 @@ is what keeps one turn from paying for recall on every step.
 
 ## Cost model
 
-- Index: one line per entry, no descriptions. Eleven entries measured 620 characters (~172 tokens).
-  The only ceiling is `indexBudgetChars`, and it is reached only by a notebook far larger than this
-  one.
+- Index: one line per entry, no descriptions. ~34 characters per entry, measured at ~10 tokens per
+  turn each. `indexBudgetChars` decides how many are named — 1400 characters is ~326 tokens and ~34
+  entries, 700 is ~200 tokens and ~10 — and the rest are counted rather than dropped. Capacity is
+  unbounded; only the token cost is chosen.
 - Recall: at most `maxRecall` entries, each clamped to `recallBudgetChars` total including wrapper.
   A single long entry measured 1,399 characters (~390 tokens) at the default budget.
 - Per-session suppression: an entry is injected at most once per session. Asking the same kind of

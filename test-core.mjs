@@ -16,14 +16,15 @@ import {
   ACK_PATTERN,
   auditEntries,
   buildIndex,
+  buildIndexDetail,
   diagnoseNotebook,
   ensurePolicyEntry,
-  indexBudgetVerdict,
   indexDrift,
+  indexResidency,
   loadNotebook,
   normalizeKey,
   pickHits,
-  projectedIndexChars,
+  readIndexFiles,
   readUsage,
   recordUsage,
   renderRecall,
@@ -511,32 +512,54 @@ writeFileSync(join(derived, 'third.md'), '# third\n', 'utf8')
 syncIndexFile(derived)
 listed = readFileSync(join(derived, 'INDEX.md'), 'utf8')
 check('a file written outside the plugin is indexed', listed.includes('`third.md`'), listed)
+// New entries take the top, because residency is finite and what was just learned is the most likely
+// thing to be needed next. Existing entries keep their relative order.
 check(
-  'the existing order is preserved',
-  listed.indexOf('second.md') < listed.indexOf('third.md'),
+  'a new entry is placed above the older one, not below it',
+  listed.indexOf('third.md') < listed.indexOf('second.md'),
   listed,
 )
 check('the derived index has no stale lines', indexDrift(derived).missing.length === 0)
 
 // ---------------------------------------------------------------------------
-console.log('\n[13] the index refuses to grow past its budget')
+console.log('\n[13] the budget caps residency, not capacity')
 // ---------------------------------------------------------------------------
-// Truncation is the failure this prevents: entries past the cut are never injected, so they may as
-// well not exist, and nothing reports that they were dropped.
-const roomy = indexBudgetVerdict(entries, { ...config, indexBudgetChars: 100000 }, 'brand-new-entry.md')
-check('a write that fits is allowed', roomy.ok === true, JSON.stringify(roomy))
+// The budget is a token decision. It cannot lose a fact — the entry lands on disk, recall matches it,
+// and memory_list names it — so refusing the write would protect nothing. What it decides is whether
+// the model can *see* the entry, and an invisible omission must at least be counted.
+const roomy = buildIndexDetail(entries, { ...config, indexBudgetChars: 100000 })
+check('a roomy budget shows everything', roomy.shown === entries.length && roomy.hidden === 0, JSON.stringify({ shown: roomy.shown, hidden: roomy.hidden }))
+check('and adds no overflow notice', !roomy.text.includes('more,'), roomy.text.slice(-120))
 
-const tight = indexBudgetVerdict(entries, { ...config, indexBudgetChars: 200 }, 'brand-new-entry.md')
-check('a write that would truncate is refused', tight.ok === false, JSON.stringify(tight))
-check('the refusal reports the numbers', tight.current > 0 && tight.after > tight.current && tight.budget === 200, JSON.stringify(tight))
+const tight = buildIndexDetail(entries, { ...config, indexBudgetChars: 400 })
+check('a tight budget hides entries', tight.hidden > 0, JSON.stringify({ shown: tight.shown, hidden: tight.hidden }))
+check('the omission is counted', tight.text.includes(`${tight.hidden} more`), tight.text.slice(-160))
+check('the notice names the way to see them', tight.text.includes('memory_list'), tight.text.slice(-160))
+check('the rendered index still fits its budget', tight.text.length <= 400, `${tight.text.length} chars`)
+check('something is shown when anything fits', tight.shown >= 1, `${tight.shown}`)
+check('nothing is dropped from the notebook', loadNotebook(config, FIXTURE_ROOT).length === entries.length)
+check('the text is the detail text', buildIndex(entries, { ...config, indexBudgetChars: 400 }) === tight.text)
 
-const exact = projectedIndexChars(entries, config)
-const boundary = indexBudgetVerdict(entries, { ...config, indexBudgetChars: exact }, 'x.md')
-check('the boundary is measured, not guessed', boundary.ok === false && boundary.current === exact, JSON.stringify(boundary))
+// The new entry goes to the top, so it is resident whenever anything is; what it can cost is other
+// entries' visibility, and that is what the write reports.
+const residency = indexResidency(entries, { ...config, indexBudgetChars: 400 }, { file: 'brand-new.md', status: 'candidate' })
+check('a new entry is resident', residency.resident === true, JSON.stringify(residency))
+check('it reports what it displaced', residency.hidden >= tight.hidden, `${residency.hidden} vs ${tight.hidden}`)
 check(
-  'a disputed entry frees room',
-  projectedIndexChars([...entries, { ...entries[0], key: 'gone', file: 'gone.md', status: 'disputed' }], config) === exact,
+  'an update never displaces anything',
+  indexResidency(entries, { ...config, indexBudgetChars: 100000 }, { file: entries[0].file, status: 'candidate' }).hidden === 0,
 )
+
+// A fact just written is the most likely thing to be needed next, so it must not be the first thing
+// the budget hides.
+const orderDir = mkdtempSync(join(tmpdir(), 'mn-order-'))
+writeFileSync(join(orderDir, 'older.md'), '# older\n', 'utf8')
+writeFileSync(join(orderDir, 'INDEX.md'), '- `older.md`\n', 'utf8')
+writeFileSync(join(orderDir, 'newer.md'), '# newer\n', 'utf8')
+syncIndexFile(orderDir)
+const ordered = readIndexFiles(orderDir)
+check('a new entry goes to the top of the index', ordered[0] === 'newer.md', ordered.join(','))
+check('the existing order is kept', ordered[1] === 'older.md', ordered.join(','))
 
 // ---------------------------------------------------------------------------
 console.log('\n[15] health: broken is not the same as empty')
@@ -554,7 +577,7 @@ check('and it has nothing to complain about', absent.problems.length === 0)
 const healthy = diagnoseNotebook(config, FIXTURE_ROOT)
 check('a healthy notebook reports ok', healthy.status === 'ok', JSON.stringify(healthy.problems))
 check('it counts the entries', healthy.entries === entries.length, `${healthy.entries}`)
-check('it reports remaining index room', healthy.indexSlotsLeft > 0, `${healthy.indexSlotsLeft}`)
+check('it reports remaining index room', healthy.indexResident > 0 && healthy.indexOverflow === 0, JSON.stringify({ resident: healthy.indexResident, overflow: healthy.indexOverflow }))
 check('it confirms the index agrees', healthy.indexAgrees === true)
 check('the fixture policy is found', healthy.policy === true)
 
@@ -570,12 +593,18 @@ check(
 )
 
 const tightHealth = diagnoseNotebook({ ...config, indexBudgetChars: 200 }, FIXTURE_ROOT)
-check('a notebook whose index will truncate is not ok', tightHealth.status === 'broken', JSON.stringify(tightHealth))
 check(
-  'and truncation is named',
-  tightHealth.problems.some((problem) => /never injected/.test(problem)),
+  'entries past the budget are degraded, not broken',
+  tightHealth.status === 'degraded',
+  JSON.stringify({ status: tightHealth.status, problems: tightHealth.problems }),
+)
+check('and the overflow is counted', tightHealth.indexOverflow === entries.length - tightHealth.indexResident, JSON.stringify({ resident: tightHealth.indexResident, overflow: tightHealth.indexOverflow }))
+check(
+  'and the reason is named',
+  tightHealth.problems.some((problem) => /past the index budget/.test(problem)),
   JSON.stringify(tightHealth.problems),
 )
+check('an index still names one entry rather than none', tightHealth.indexResident >= 1, `${tightHealth.indexResident}`)
 
 const noTriggerDir = mkdtempSync(join(tmpdir(), 'mn-health2-'))
 writeFileSync(join(noTriggerDir, 'bare.md'), '# A bare entry\n\nEvidence: none\n', 'utf8')
@@ -586,7 +615,7 @@ check('and the entry is named', bare.withoutTriggers.includes('bare'), JSON.stri
 
 // Every status must return exactly the declared shape: a tool output schema has to describe what is
 // actually returned, and a field that vanishes for one status cannot be described at all.
-const SHAPE = ['status', 'dir', 'entries', 'indexAgrees', 'indexChars', 'indexBudget', 'indexSlotsLeft', 'disputed', 'withoutTriggers', 'withoutEvidence', 'policy', 'problems']
+const SHAPE = ['status', 'dir', 'entries', 'indexAgrees', 'indexChars', 'indexBudget', 'indexResident', 'indexOverflow', 'disputed', 'withoutTriggers', 'withoutEvidence', 'policy', 'problems']
 for (const [label, report] of [['unconfigured', unconfigured], ['absent', absent], ['ok', healthy], ['degraded', bare], ['broken', drifting]]) {
   check(`the ${label} report has every field`, SHAPE.every((field) => field in report), Object.keys(report).join(','))
 }

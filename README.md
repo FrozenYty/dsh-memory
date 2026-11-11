@@ -57,7 +57,7 @@ no `Config` schema, so values are taken as given; the defaults below are applied
 | `workspaceDir` | `.agents/memory` | Notebook directory, relative to the session working directory. `''` disables this tier. |
 | `machineDir` | `''` | Optional machine-wide tier, absolute or `~`-prefixed. The workspace tier wins name collisions. |
 | `showIndex` | `true` | Inject the filename index. |
-| `indexBudgetChars` | `1400` | Character ceiling for the index section. |
+| `indexBudgetChars` | `1400` | Character ceiling for the index section. Caps how many entries are **named**, not how many the notebook may hold — entries past it stay recallable and `memory_list` lists them |
 | `recallEnabled` | `true` | Publish a matching entry for the turn. |
 | `recallBudgetChars` | `1400` | Character ceiling for one recall publication. |
 | `maxRecall` | `2` | Maximum entries published for one message. |

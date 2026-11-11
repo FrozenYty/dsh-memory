@@ -7,6 +7,36 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.13.0] — 2026-11-11
+
+### Changed
+
+- **The index budget now caps residency, not capacity.** It was doing two jobs and doing both badly: it
+  decided how many tokens the index costs *and* how many entries the notebook may hold, and one number
+  cannot serve both. Measured, 1400 characters is ~326 tokens per turn and ~34 entries, so wanting 200
+  entries meant accepting ~2034 tokens per turn. The budget now answers only the token question, and
+  capacity is unbounded. [ADR 0014](docs/adr/14-index-budget-is-residency.md)
+- **A write is no longer refused on budget.** It cannot lose a fact any more, so the refusal protected
+  nothing and made the model manage storage mid-task. Writes report `indexResident` and `indexOverflow`.
+- **New entries go to the top of `INDEX.md`**, not the bottom. Residency is finite and what was just
+  learned is the most likely thing to be needed next; appending meant a notebook at its budget hid a
+  fact the moment it was written.
+
+### Added
+
+- **A counted overflow.** The index ends with `… and N more, all listed by memory_list` instead of a bare
+  ellipsis. A model that cannot see the omission has no reason to look further; a counted one is not
+  silent. Those entries stay recallable the whole time.
+- `memory_health` reports `indexResident` and `indexOverflow`, and treats overflow as `degraded` rather
+  than `broken` — the notebook works, some entries are merely not visible unprompted.
+- The index always names at least one entry. With a budget at or below the header's own length it would
+  otherwise list none, telling the model a notebook exists without saying what is in it.
+
+### Removed
+
+- `indexBudgetVerdict` and `projectedIndexChars`, replaced by `indexResidency`. Their whole purpose was
+  to decide a refusal that no longer happens.
+
 ## [0.12.0] — 2026-11-11
 
 ### Added
@@ -261,7 +291,8 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory-notebook/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/FrozenYty/dsh-memory-notebook/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.13.0
 [0.12.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.12.0
 [0.11.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.11.0
 [0.10.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.10.0

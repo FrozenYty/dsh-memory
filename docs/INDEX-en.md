@@ -49,11 +49,12 @@ together. Read this before adding, moving or renaming a document.
 | [0006](adr/06-evidence-audit-by-age.md) | Evidence is audited by age and completeness, never by execution | Accepted |
 | [0007](adr/07-policy-in-the-notebook.md) | The notebook's policy lives in the notebook, not in a skill | Superseded by 0008 |
 | [0008](adr/08-policy-template-and-seeding.md) | The policy ships with the plugin and is seeded where a notebook lacks one | Accepted |
-| [0009](adr/09-derived-index-and-write-refusal.md) | The index is derived data; a write that would truncate it is refused | Accepted |
+| [0009](adr/09-derived-index-and-write-refusal.md) | The index is derived data; a write that would truncate it is refused | Partially superseded by 0014 |
 | [0010](adr/10-capture-hint.md) | A capture hint before compaction, not automatic capture | Accepted |
 | [0011](adr/11-judgement-set-for-recall.md) | Recall is measured against written judgements, not a benchmark | Accepted |
 | [0012](adr/12-health-check.md) | Capability is diagnosed separately from results | Accepted |
 | [0013](adr/13-usage-counts.md) | Recall usage is counted per entry, and records nothing else | Accepted |
+| [0014](adr/14-index-budget-is-residency.md) | The index budget caps residency, not capacity | Accepted |
 
 Add a row here whenever an ADR is added. `scripts/check-docs.mjs` fails the build when an ADR
 exists on disk but is not listed in this table.
