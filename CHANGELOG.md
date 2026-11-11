@@ -7,6 +7,24 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.13.2] — 2026-11-11
+
+### Changed
+
+- **The plugin's own description now says what it is, not how it works.** It read *"把 .agents/memory
+  里的笔记索引注入系统提示，并只在消息真正命中时召回那一条"* — pure mechanism, so a reader learns
+  nothing about whether they want it, and `.agents/memory` is a setting they may have changed. It now
+  leads with the shared notebook and the three things it can do with it. `locale/en.json` and
+  `package.json` said two different things in English; both are now written deliberately, with the
+  npm one longer and search-friendly.
+
+### Added
+
+- **A locale consistency check.** `scripts/check-docs.mjs` compares the key sets of `locale/*.json`
+  and rejects an empty string. Nothing read those files for consistency before, so a key added to one
+  language and forgotten in the other degraded the plugin page silently — it renders blank rather than
+  falling back. Verified by adding a key to one file and confirming the check names it.
+
 ## [0.13.1] — 2026-11-11
 
 ### Changed
@@ -324,7 +342,8 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory-notebook/compare/v0.13.1...HEAD
+[Unreleased]: https://github.com/FrozenYty/dsh-memory-notebook/compare/v0.13.2...HEAD
+[0.13.2]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.13.2
 [0.13.1]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.13.1
 [0.13.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.13.0
 [0.12.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.12.0

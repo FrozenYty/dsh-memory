@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Memory notebook",
-    "description": "Indexes your .agents/memory notes in the system prompt and surfaces only the one a message actually matches."
+    "description": "A memory notebook you and the agent share: plain markdown files it can see, open on demand, and write back to. The notes stay yours to read and edit."
   }
 }
