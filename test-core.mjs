@@ -7,10 +7,11 @@
  *
  *   node test-core.mjs
  */
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, appendFileSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { apply as pluginApply } from './index.js'
 import {
   ACK_PATTERN,
   auditEntries,
@@ -20,8 +21,11 @@ import {
   indexBudgetVerdict,
   indexDrift,
   loadNotebook,
+  normalizeKey,
   pickHits,
   projectedIndexChars,
+  readUsage,
+  recordUsage,
   renderRecall,
   scanDir,
   scoreEntry,
@@ -29,6 +33,8 @@ import {
   strongSignalRarity,
   syncIndexFile,
   tokenize,
+  usageReport,
+  USAGE_FILE,
   writeEntryFile,
 } from './notebook-core.js'
 
@@ -548,9 +554,9 @@ check('and it has nothing to complain about', absent.problems.length === 0)
 const healthy = diagnoseNotebook(config, FIXTURE_ROOT)
 check('a healthy notebook reports ok', healthy.status === 'ok', JSON.stringify(healthy.problems))
 check('it counts the entries', healthy.entries === entries.length, `${healthy.entries}`)
-check('it reports remaining index room', healthy.index.slotsLeft > 0, JSON.stringify(healthy.index))
-check('it confirms the index agrees', healthy.index.agrees === true)
-check('the fixture policy is found', healthy.evidence.policy === true)
+check('it reports remaining index room', healthy.indexSlotsLeft > 0, `${healthy.indexSlotsLeft}`)
+check('it confirms the index agrees', healthy.indexAgrees === true)
+check('the fixture policy is found', healthy.policy === true)
 
 const driftHealthDir = mkdtempSync(join(tmpdir(), 'mn-health-'))
 writeFileSync(join(driftHealthDir, 'invisible.md'), '# invisible\n\nEvidence: none\n', 'utf8')
@@ -576,14 +582,146 @@ writeFileSync(join(noTriggerDir, 'bare.md'), '# A bare entry\n\nEvidence: none\n
 writeFileSync(join(noTriggerDir, 'INDEX.md'), '- `bare.md`\n', 'utf8')
 const bare = diagnoseNotebook({ ...config, workspaceDir: noTriggerDir }, '.')
 check('an entry with no triggers is degraded, not broken', bare.status === 'degraded', JSON.stringify(bare))
+check('and the entry is named', bare.withoutTriggers.includes('bare'), JSON.stringify(bare.withoutTriggers))
+
+// Every status must return exactly the declared shape: a tool output schema has to describe what is
+// actually returned, and a field that vanishes for one status cannot be described at all.
+const SHAPE = ['status', 'dir', 'entries', 'indexAgrees', 'indexChars', 'indexBudget', 'indexSlotsLeft', 'disputed', 'withoutTriggers', 'withoutEvidence', 'policy', 'problems']
+for (const [label, report] of [['unconfigured', unconfigured], ['absent', absent], ['ok', healthy], ['degraded', bare], ['broken', drifting]]) {
+  check(`the ${label} report has every field`, SHAPE.every((field) => field in report), Object.keys(report).join(','))
+}
+
+// ---------------------------------------------------------------------------
+console.log('\n[16] usage: which entries are actually used')
+// ---------------------------------------------------------------------------
+// "Never recalled" is the finding worth having: an entry injected a hundred times and opened once is
+// doing nothing, and nothing else in the plugin notices. A total would hide the one entry nobody uses.
+const usageDir = mkdtempSync(join(tmpdir(), 'mn-usage-'))
+const usedKey = entries[0].key
+const unusedKey = entries[1].key
+check('recording usage succeeds', recordUsage(usageDir, usedKey) === true && recordUsage(usageDir, usedKey) === true)
+check('usage on a missing directory fails quietly', recordUsage(join(usageDir, 'nope'), usedKey) === false)
+check('an empty log reads as empty', readUsage(emptyDir).length === 0)
+
+const usageRows = readUsage(usageDir)
+check('usage reads back', usageRows.length === 2, `${usageRows.length}`)
+const firstRow = JSON.parse(readFileSync(join(usageDir, USAGE_FILE), 'utf8').split('\n')[0])
 check(
-  'and the entry is named',
-  bare.evidence.withoutTriggers.includes('bare'),
-  JSON.stringify(bare.evidence),
+  'the log records a day and an entry name and nothing else',
+  Object.keys(firstRow).sort().join(',') === 'd,e',
+  JSON.stringify(firstRow),
+)
+check(
+  'no query text reaches the log',
+  readFileSync(join(usageDir, USAGE_FILE), 'utf8')
+    .trim()
+    .split('\n')
+    .every((line) => Object.keys(JSON.parse(line)).length === 2),
+)
+
+const usage = usageReport(entries, usageRows)
+check('a recalled entry is counted', usage.used.some((row) => row.key === usedKey && row.recalls === 2), JSON.stringify(usage.used))
+check('an entry never recalled is named', usage.never.includes(unusedKey), JSON.stringify(usage.never))
+check('the entry that was recalled is not in never', !usage.never.includes(usedKey))
+check('disputed entries are not reported as unused', usageReport([{ ...entries[0], status: 'disputed' }], []).never.length === 0)
+
+appendFileSync(join(usageDir, USAGE_FILE), '{"d":"2026-01-01","e":"tru', 'utf8')
+check('a half-written line is skipped, not fatal', readUsage(usageDir).length === 2, `${readUsage(usageDir).length}`)
+
+// ---------------------------------------------------------------------------
+console.log('\n[17] every tool schema stays inside the host subset')
+// ---------------------------------------------------------------------------
+// The host rejects a schema it cannot describe, and it does so while the plugin is loading — so the
+// whole plugin goes inactive and every tool disappears. That happened: `type: ['object','null']` in
+// one output schema removed memory_write, memory_list and the rest, and the only visible symptom was
+// "unknown tool". These rules are copied from the host's own validator so the same mistake cannot
+// reach it again.
+const SCHEMA_TYPES = ['object', 'array', 'string', 'number', 'integer', 'boolean', 'null']
+
+function schemaViolations(node, path, out) {
+  if (node === null || typeof node !== 'object' || Array.isArray(node)) {
+    out.push(`${path} is not a schema object`)
+    return out
+  }
+  const type = node.type
+  if (typeof type !== 'string' || !SCHEMA_TYPES.includes(type)) {
+    out.push(Array.isArray(type) ? `${path}.type must be a single type string (type arrays are not supported)` : `${path}.type must be one of ${SCHEMA_TYPES.join('/')}`)
+    return out
+  }
+  const allowedFor = { properties: ['object'], required: ['object'], additionalProperties: ['object'], items: ['array'] }
+  for (const [key, types] of Object.entries(allowedFor)) {
+    if (key in node && !types.includes(type)) out.push(`${path}.${key} is not supported on type "${type}"`)
+  }
+  if (node.properties !== undefined) {
+    for (const [key, value] of Object.entries(node.properties)) schemaViolations(value, `${path}.properties.${key}`, out)
+  }
+  if (node.items !== undefined) schemaViolations(node.items, `${path}.items`, out)
+  if (node.oneOf !== undefined) node.oneOf.forEach((branch, index) => schemaViolations(branch, `${path}.oneOf[${index}]`, out))
+  return out
+}
+
+const registered = []
+pluginApply(
+  {
+    systemPrompt: { section: () => {}, context: () => {} },
+    tools: { register: (tool) => { registered.push(tool); return () => {} } },
+    on: () => () => {},
+    get: () => undefined,
+  },
+  { workspaceDir: 'notebook' },
+)
+
+check('every tool registers', registered.length >= 6, `${registered.length}`)
+check(
+  'the six memory tools are present',
+  ['memory_list', 'memory_read', 'memory_write', 'memory_verify', 'memory_health', 'memory_audit', 'memory_usage'].every((name) =>
+    registered.some((tool) => tool.name === name),
+  ),
+  registered.map((tool) => tool.name).join(','),
+)
+
+let schemaProblems = []
+for (const tool of registered) {
+  for (const [label, schema] of [['parameters', tool.parameters], ['output', tool.output?.schema]]) {
+    if (schema === undefined) continue
+    const violations = schemaViolations(schema, `${tool.name}.${label}`, [])
+    if (schema.type !== 'object') violations.push(`${tool.name}.${label}.type must be "object" (structured output is object-rooted)`)
+    schemaProblems = schemaProblems.concat(violations)
+  }
+}
+check('no schema uses a feature the host rejects', schemaProblems.length === 0, schemaProblems.join('; '))
+
+// The failure this guards was invisible: a rejected schema unloads the plugin, and an unloaded plugin
+// looks exactly like a notebook with nothing to say.
+check(
+  'a type array is caught by these rules',
+  schemaViolations({ type: ['object', 'null'] }, 'probe', []).some((v) => /single type string/.test(v)),
 )
 
 // ---------------------------------------------------------------------------
-console.log('\n[16] safety')
+console.log('\n[18] the host API guard')
+// ---------------------------------------------------------------------------
+// A plugin that silently does nothing is worse than one that fails to load, because nothing tells the
+// user which happened.
+let guarded = ''
+try {
+  pluginApply({ systemPrompt: { section: () => {}, context: () => {} }, tools: {} }, {})
+} catch (error) {
+  guarded = error.message
+}
+check('a host without tools.register fails loudly', /tools\.register/.test(guarded), guarded)
+check('the failure says it is a load failure', /not active/.test(guarded), guarded)
+
+let missingPrompt = ''
+try {
+  pluginApply({ systemPrompt: {}, tools: { register: () => {} } }, {})
+} catch (error) {
+  missingPrompt = error.message
+}
+check('a host without systemPrompt.section fails loudly', /systemPrompt\.section/.test(missingPrompt), missingPrompt)
+
+// ---------------------------------------------------------------------------
+console.log('\n[19] safety')
 // ---------------------------------------------------------------------------
 const readOnlyDir = mkdtempSync(join(tmpdir(), 'mn-ro-'))
 writeFileSync(join(readOnlyDir, 'broken.md'), '---\nstatus: candidate\n---\nno heading, no trouble\n', 'utf8')

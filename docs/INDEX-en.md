@@ -53,6 +53,7 @@ together. Read this before adding, moving or renaming a document.
 | [0010](adr/10-capture-hint.md) | A capture hint before compaction, not automatic capture | Accepted |
 | [0011](adr/11-judgement-set-for-recall.md) | Recall is measured against written judgements, not a benchmark | Accepted |
 | [0012](adr/12-health-check.md) | Capability is diagnosed separately from results | Accepted |
+| [0013](adr/13-usage-counts.md) | Recall usage is counted per entry, and records nothing else | Accepted |
 
 Add a row here whenever an ADR is added. `scripts/check-docs.mjs` fails the build when an ADR
 exists on disk but is not listed in this table.
