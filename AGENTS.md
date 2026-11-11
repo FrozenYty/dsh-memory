@@ -58,10 +58,11 @@ The load-bearing constraint: **this is a profile-linked bundle, so it cannot imp
 ## 5. Verify before reporting
 
 ```sh
-node test-core.mjs                    # 50 behavioural checks
+node test-core.mjs                    # 67 behavioural checks
 node scripts/check-paths.mjs          # no machine-specific paths in any document
 node scripts/check-docs.mjs           # ADRs listed, language switchers, no broken relative links
 node scripts/check-evidence.mjs --dir test/fixtures/notebook   # evidence completeness and age
+node scripts/check-index.mjs --dir test/fixtures/notebook      # INDEX.md agrees with the directory
 node --check index.js                 # syntax
 node scripts/check-commit-messages.mjs --range origin/main..HEAD   # no tool co-author
 ```

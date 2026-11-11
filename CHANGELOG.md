@@ -7,6 +7,23 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-11-11
+
+### Added
+
+- Prefix tolerance in recall: a query word matches a trigger, name or title word when one is the
+  other's prefix and both reach five characters. Below that floor the match must be exact, so `env`
+  still does not match `environment`. Body matching stays exact.
+- `scripts/check-index.mjs`, and an index-drift section in `memory_audit`: both directions between
+  `INDEX.md` and the directory. The policy asked for this after every add or retire; it is now a
+  command that can fail.
+
+### Fixed
+
+- The READMEs and `architecture-en.md` promised "no stemming beyond a shared five-character prefix"
+  while `scoreEntry` matched words exactly. The documents were right and the code was not; the
+  prefix rule now exists.
+
 ## [0.5.0] — 2026-11-11
 
 ### Changed
@@ -89,7 +106,8 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory-notebook/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/FrozenYty/dsh-memory-notebook/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.6.0
 [0.5.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.5.0
 [0.4.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.4.0
 [0.3.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.3.0

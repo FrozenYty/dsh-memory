@@ -26,6 +26,7 @@ import {
   auditEntries,
   buildIndex,
   ensurePolicyEntry,
+  indexDrift,
   loadNotebook,
   normalizeKey,
   pickHits,
@@ -398,7 +399,7 @@ export function apply(ctx, config) {
         schema: {
           type: 'object',
           additionalProperties: false,
-          required: ['total', 'missing_evidence', 'stale'],
+          required: ['total', 'missing_evidence', 'stale', 'index'],
           properties: {
             total: { type: 'number' },
             missing_evidence: { type: 'array', items: { type: 'string' } },
@@ -411,6 +412,15 @@ export function apply(ctx, config) {
                   name: { type: 'string' },
                   days: { type: 'number' },
                 },
+              },
+            },
+            index: {
+              type: 'object',
+              additionalProperties: false,
+              required: ['unlisted', 'missing'],
+              properties: {
+                unlisted: { type: 'array', items: { type: 'string' } },
+                missing: { type: 'array', items: { type: 'string' } },
               },
             },
           },
@@ -427,9 +437,20 @@ export function apply(ctx, config) {
             lines.push('', 'Not touched recently:')
             for (const row of value.stale) lines.push(`  ${row.name} (${row.days}d)`)
           }
-          if (value.missing_evidence.length === 0 && value.stale.length === 0) {
-            lines.push('', 'Nothing needs a re-check.')
+          if (value.index.unlisted.length > 0) {
+            lines.push('', 'On disk but missing from INDEX.md:')
+            for (const file of value.index.unlisted) lines.push(`  ${file}`)
           }
+          if (value.index.missing.length > 0) {
+            lines.push('', 'Listed in INDEX.md but not on disk:')
+            for (const file of value.index.missing) lines.push(`  ${file}`)
+          }
+          const clean =
+            value.missing_evidence.length === 0 &&
+            value.stale.length === 0 &&
+            value.index.unlisted.length === 0 &&
+            value.index.missing.length === 0
+          if (clean) lines.push('', 'Nothing needs a re-check.')
           return [{ type: 'text', text: lines.join('\n') }]
         },
       },
@@ -437,6 +458,8 @@ export function apply(ctx, config) {
         const entries = entriesFor(exec)
         const staleDays = typeof args.stale_days === 'number' && args.stale_days >= 0 ? args.stale_days : 90
         const report = auditEntries(entries, { staleDays })
+        const dirs = resolveDirs(cfg, exec?.agent?.session?.header?.cwd)
+        const drift = dirs.length > 0 ? indexDrift(dirs[0], entries.filter((entry) => entry.dir === dirs[0])) : { unlisted: [], missing: [] }
         const now = Date.now()
         return {
           total: report.total,
@@ -445,6 +468,7 @@ export function apply(ctx, config) {
             name: entry.key,
             days: Math.floor((now - entry.mtimeMs) / 86_400_000),
           })),
+          index: { unlisted: drift.unlisted, missing: drift.missing },
         }
       },
     }),

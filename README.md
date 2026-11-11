@@ -101,7 +101,7 @@ Evidence: `exact command or error text that proves it`
 | `memory_read` | One entry in full. |
 | `memory_write` | Create or update an entry; `evidence` is required. |
 | `memory_verify` | Promote to `verified`, or retire to `disputed`. |
-| `memory_audit` | Entries with no `Evidence:` line, and entries untouched for a long time. |
+| `memory_audit` | Entries with no `Evidence:`, entries untouched for long, and `INDEX.md` drift in either direction. |
 
 ## Why it is cheap
 
@@ -122,8 +122,9 @@ characters, and an entry is never injected twice in one session.
 ## Verified
 
 ```sh
-node test-core.mjs        # 50 checks, no dependencies
+node test-core.mjs        # 67 checks, no dependencies
 node scripts/check-evidence.mjs --dir .agents/memory   # evidence completeness and age
+node scripts/check-index.mjs --dir .agents/memory      # INDEX.md agrees with the directory
 ```
 
 The suite runs against a five-entry fixture notebook committed with the repository, so it behaves

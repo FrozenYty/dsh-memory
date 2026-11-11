@@ -127,31 +127,49 @@ export function scanDir(dir) {
   return out
 }
 
+/** Filenames named by INDEX.md, in order. Tolerates both `backticks` and [links](file.md). */
+export function readIndexFiles(dir) {
+  const indexPath = join(dir, 'INDEX.md')
+  if (!existsSync(indexPath)) return []
+  let text = ''
+  try {
+    text = readFileSync(indexPath, 'utf8')
+  } catch {
+    return []
+  }
+  const files = []
+  for (const line of text.split(/\r?\n/)) {
+    const hit = line.match(/`([^`]+\.md)`/) ?? line.match(/\[[^\]]*\]\(([^)]+\.md)\)/)
+    if (hit !== null) files.push(hit[1].replace(/^\.\//, ''))
+  }
+  return files
+}
+
 /** Order entries the way INDEX.md lists them; anything unlisted sinks, newest first. */
 export function orderByIndex(entries, dir) {
-  const indexPath = join(dir, 'INDEX.md')
   const rank = new Map()
-  if (existsSync(indexPath)) {
-    let text = ''
-    try {
-      text = readFileSync(indexPath, 'utf8')
-    } catch {
-      text = ''
-    }
-    let i = 0
-    for (const line of text.split(/\r?\n/)) {
-      const backtick = line.match(/`([^`]+\.md)`/)
-      const link = line.match(/\[[^\]]*\]\(([^)]+\.md)\)/)
-      const hit = backtick ?? link
-      if (hit !== null) rank.set(hit[1].replace(/^\.\//, ''), i++)
-    }
-  }
+  for (const [position, file] of readIndexFiles(dir).entries()) rank.set(file, position)
   return entries.slice().sort((a, b) => {
     const ra = rank.has(a.file) ? rank.get(a.file) : Number.MAX_SAFE_INTEGER
     const rb = rank.has(b.file) ? rank.get(b.file) : Number.MAX_SAFE_INTEGER
     if (ra !== rb) return ra - rb
     return b.mtimeMs - a.mtimeMs
   })
+}
+
+/**
+ * The two-way check between INDEX.md and the directory, which the policy asks for after every
+ * add or retire. It is the failure this notebook keeps producing: a file nobody listed is
+ * invisible from outside, and a listed file that is gone makes the index lie.
+ */
+export function indexDrift(dir, entries = scanDir(dir)) {
+  const onDisk = new Set(entries.map((entry) => entry.file))
+  const listed = [...new Set(readIndexFiles(dir))]
+  return {
+    listed,
+    unlisted: [...onDisk].filter((file) => !listed.includes(file)).sort(),
+    missing: listed.filter((file) => !onDisk.has(file)).sort(),
+  }
 }
 
 /** Every entry across the configured tiers, workspace first, one name per key. */
@@ -214,6 +232,23 @@ export function tokenize(text) {
 }
 
 /**
+ * A query word matches a field word exactly, or by a shared prefix once both sides reach five
+ * characters (`configure` ~ `configuration`, `install` ~ `installation`). The five-character floor
+ * keeps short words from matching everything that starts with them: `env` does not match
+ * `environment`, which is why `env` has to be written as a trigger.
+ */
+function tokenMatches(tokens, token) {
+  if (tokens.has(token)) return true
+  if (token.length < 5) return false
+  for (const candidate of tokens) {
+    if (candidate.length >= 5 && (candidate.startsWith(token) || token.startsWith(candidate))) {
+      return true
+    }
+  }
+  return false
+}
+
+/**
  * A trigger is a phrase from the author's own vocabulary. It counts only when **every**
  * word of the phrase is present in the query, so a generic word such as "denied" cannot
  * carry the whole phrase "dotnet pipe denied" into an unrelated message. Phrase weight is
@@ -234,6 +269,7 @@ export function scoreEntry(entry, queryTokens) {
     if (phraseTokens.size === 0) continue
     let whole = true
     for (const token of phraseTokens) {
+      // Phrase words must be present outright; prefix tolerance here would let a phrase drift.
       if (!queryTokens.has(token)) {
         whole = false
         break
@@ -248,8 +284,10 @@ export function scoreEntry(entry, queryTokens) {
   for (const token of queryTokens) {
     if (STOPWORDS.has(token) || covered.has(token)) continue
     let weight = 0
-    if (nameTokens.has(token)) weight = 4
-    else if (titleTokens.has(token)) weight = 3
+    if (tokenMatches(nameTokens, token)) weight = 4
+    else if (tokenMatches(titleTokens, token)) weight = 3
+    // Body matching stays exact: it is the largest set, and prefix scanning it would cost more
+    // than the recall it buys.
     else if (bodyTokens.has(token)) weight = 1
     if (weight > 0) {
       score += weight

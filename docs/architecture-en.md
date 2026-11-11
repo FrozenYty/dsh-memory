@@ -105,9 +105,14 @@ is what keeps one turn from paying for recall on every step.
   should not be enough and a pile of body hits should not be either.
 - **Gating before matching:** a query shorter than `minQueryChars`, or one that is only an
   acknowledgement, never matches.
+- **Prefix tolerance, with a floor.** A query word matches a trigger, name or title word when one is
+  the other's prefix and both reach five characters (`configure` ~ `configuration`). Below five
+  characters the match must be exact — otherwise `env` would match every `environment` and the field
+  would stop discriminating. Prefix scanning is limited to the three small sets; the body set is
+  large and stays exact.
 
-Deliberately no synonyms, no stemming beyond a shared five-character prefix, no embeddings. A wrong
-recall costs tokens and trust; a missed recall is visible and fixable by adding a trigger.
+Deliberately no synonyms and no embeddings. A wrong recall costs tokens and trust; a missed recall
+is visible and fixable by adding a trigger.
 
 ## Trust states
 
@@ -141,6 +146,16 @@ moves it too. Reviewing an entry through `memory_verify` refreshes that timestam
 
 Audit is informational by default and fails only under `--strict`. See
 [ADR 0006](adr/06-evidence-audit-by-age.md).
+
+## Index drift
+
+`scripts/check-index.mjs` and the `memory_audit` tool check both directions between `INDEX.md` and
+the directory. A file nobody listed is invisible from outside — the injected index never names it.
+A listed file that is gone makes the index lie to whoever reads it next. Neither surfaces as an
+error anywhere else.
+
+The policy asks for this check after every add or retire; the script makes it a command instead of a
+habit. A missing `INDEX.md` is not drift: ordering falls back to modification time.
 
 ## Failure modes and what prevents them
 
