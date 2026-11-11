@@ -7,6 +7,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- `memory_audit` tool and `scripts/check-evidence.mjs`: report entries with no `Evidence:` line and
+  entries untouched beyond `--stale-days`. Neither executes the recorded commands — a notebook is
+  arbitrary markdown, so age is the proxy for evidence rot ([ADR 0006](docs/adr/06-evidence-audit-by-age.md)).
+- `memory_verify` now refreshes the entry's `updated` date, so reviewing an entry resets its audit
+  age.
+- `test/fixtures/notebook`: a five-entry fixture, so the suite behaves the same locally and in CI.
+
 ## [0.1.0] — 2026-11-11
 
 First release. The plugin was built for one notebook and has been running against it since.

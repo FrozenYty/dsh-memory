@@ -22,6 +22,7 @@
  * is inert in profiles without the services it injects.
  */
 import {
+  auditEntries,
   buildIndex,
   loadNotebook,
   normalizeKey,
@@ -340,6 +341,77 @@ export function apply(ctx, config) {
         const status = args.status === 'verified' ? 'verified' : args.status === 'disputed' ? 'disputed' : 'candidate'
         setStatus(entry.dir, entry.key, status)
         return { name: entry.key, status }
+      },
+    }),
+  )
+
+  ctx.tools.register(
+    defineTool({
+      name: 'memory_audit',
+      description:
+        'Report notebook entries that need a human re-check: those with no Evidence line, and those not touched in a long time. Age is a proxy for evidence rot — the command recorded in an old entry is the one most likely to no longer hold. Use when the user asks what is stale, or before trusting an entry that looks old.',
+      parameters: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          stale_days: {
+            type: 'number',
+            description: 'Age in days after which an entry counts as stale (default 90)',
+          },
+        },
+      },
+      output: {
+        schema: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['total', 'missing_evidence', 'stale'],
+          properties: {
+            total: { type: 'number' },
+            missing_evidence: { type: 'array', items: { type: 'string' } },
+            stale: {
+              type: 'array',
+              items: {
+                type: 'object',
+                required: ['name', 'days'],
+                properties: {
+                  name: { type: 'string' },
+                  days: { type: 'number' },
+                },
+              },
+            },
+          },
+        },
+        render: (_args, value) => {
+          const lines = [
+            `${value.total} entries; ${value.missing_evidence.length} without evidence, ${value.stale.length} stale`,
+          ]
+          if (value.missing_evidence.length > 0) {
+            lines.push('', 'No Evidence line:')
+            for (const name of value.missing_evidence) lines.push(`  ${name}`)
+          }
+          if (value.stale.length > 0) {
+            lines.push('', 'Not touched recently:')
+            for (const row of value.stale) lines.push(`  ${row.name} (${row.days}d)`)
+          }
+          if (value.missing_evidence.length === 0 && value.stale.length === 0) {
+            lines.push('', 'Nothing needs a re-check.')
+          }
+          return [{ type: 'text', text: lines.join('\n') }]
+        },
+      },
+      async execute(args, exec) {
+        const entries = entriesFor(exec)
+        const staleDays = typeof args.stale_days === 'number' && args.stale_days >= 0 ? args.stale_days : 90
+        const report = auditEntries(entries, { staleDays })
+        const now = Date.now()
+        return {
+          total: report.total,
+          missing_evidence: report.missingEvidence.map((entry) => entry.key),
+          stale: report.stale.map((entry) => ({
+            name: entry.key,
+            days: Math.floor((now - entry.mtimeMs) / 86_400_000),
+          })),
+        }
       },
     }),
   )

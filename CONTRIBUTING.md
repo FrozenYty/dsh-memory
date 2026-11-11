@@ -82,6 +82,7 @@ Every job below blocks the merge. The list grows; the rule does not.
 | Tests | `node test-core.mjs` | write the failing case first |
 | Paths | `node scripts/check-paths.mjs` | write it relative to the repository root |
 | Docs | `node scripts/check-docs.mjs` | list the ADR, fix the switcher, fix the link |
+| Evidence | `node scripts/check-evidence.mjs --dir test/fixtures/notebook` | add the missing `Evidence:` line |
 | Co-author | `node scripts/check-commit-messages.mjs --range <base>..HEAD` | remove the trailer |
 
 There is no linter and no formatter. The code is plain ES modules with no dependencies, and adding

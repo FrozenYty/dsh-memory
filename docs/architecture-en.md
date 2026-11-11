@@ -107,6 +107,22 @@ rather than annotated. `candidate` is injected with a `(candidate)` label; `veri
 bare. The state is a frontmatter field, so it survives without the plugin and is visible in
 `git diff`.
 
+## Evidence hygiene
+
+Writing evidence and checking it are separate problems. `scripts/check-evidence.mjs` and the
+`memory_audit` tool audit two properties a script can compute safely:
+
+- **Completeness** — does the entry carry an `Evidence:` line at all?
+- **Age** — was the file modified within `--stale-days` (default 90)?
+
+They never execute the recorded commands. A notebook is arbitrary markdown; a verifier that runs
+whatever it finds is an arbitrary-code surface. Age is the honest proxy: an untouched entry is the
+one most likely to carry stale evidence, and the timestamp comes from the filesystem, so a hand edit
+moves it too. Reviewing an entry through `memory_verify` refreshes that timestamp.
+
+Audit is informational by default and fails only under `--strict`. See
+[ADR 0006](adr/06-evidence-audit-by-age.md).
+
 ## Failure modes and what prevents them
 
 | Failure | Prevention |
