@@ -1,0 +1,3 @@
+# Normalise to LF in the repository and in every checkout. The CI runs on Linux; a CRLF checkout
+# would make the document gates read different bytes than the author committed.
+* text=auto eol=lf
