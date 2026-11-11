@@ -277,7 +277,10 @@ export function scoreEntry(entry, queryTokens) {
     }
     if (!whole) continue
     score += phraseTokens.size === 1 ? 5 : 7
-    hits += 1
+    // A whole phrase is more evidence than a single word, and it counts as such: three matched
+    // words clear the two-hit floor on their own, which is what lets a short message like
+    // "mcp 挂了" recall one entry without lowering the floor for ordinary words.
+    hits += phraseTokens.size
     for (const token of phraseTokens) covered.add(token)
   }
 

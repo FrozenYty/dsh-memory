@@ -1,5 +1,5 @@
 ---
-triggers: skill, 技能, 消失, 目录里没有, frontmatter, 描述
+triggers: skill, 技能, 消失, 目录里没有, frontmatter, 描述, 技能 消失
 ---
 
 # Malformed frontmatter removes the skill silently — 2026-11-02

@@ -1,5 +1,5 @@
 ---
-triggers: 写入, 拒绝访问, 目录, icacls, 权限标签, 完整性
+triggers: 拒绝访问, icacls, 权限标签, 完整性, 写入 拒绝, 目录 权限
 ---
 
 # Writes need the Low integrity label on the target — 2026-11-02

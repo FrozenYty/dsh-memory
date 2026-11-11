@@ -166,6 +166,11 @@ const brokenPhrase = scoreEntry(phraseEntry, tokenize('something was denied'))
 check('a broken phrase does not score', brokenPhrase.score === 1, `score ${brokenPhrase.score}`)
 const wholePhrase = scoreEntry(phraseEntry, tokenize('dotnet pipe denied on startup'))
 check('a whole phrase scores above any single field', wholePhrase.score >= 7, `score ${wholePhrase.score}`)
+check(
+  'a whole phrase counts one hit per word',
+  wholePhrase.hits === 3,
+  `hits ${wholePhrase.hits}`,
+)
 
 // ---------------------------------------------------------------------------
 console.log('\n[5] rendering holds its budget without losing the evidence')

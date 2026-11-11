@@ -86,8 +86,10 @@ Evidence: `exact command or error text that proves it`
 - **`triggers`** is the recall vocabulary. Write it in the language you speak, even when the body is
   English — matching runs on these words. Entries are comma-separated; a multi-word entry counts as a
   phrase and matches only when every word of it appears, so keep phrases specific (`dotnet pipe
-  denied`, not `denied`). An entry without triggers still matches on its filename, title and body,
-  but a Chinese message will not find an English body that way.
+  denied`, not `denied`). Avoid generic single words (`configuration`, `permission`): once one pairs
+  with any second hit it pulls the entry into unrelated messages — make it part of a phrase instead.
+  An entry without triggers still matches on its filename, title and body, but a Chinese message will
+  not find an English body that way.
 - **`status`** is `candidate` (default), `verified`, or `disputed`. Disputed entries are never
   indexed and never recalled.
 - **`Evidence:`** is required when writing through `memory_write`. A clamped recall keeps that line
