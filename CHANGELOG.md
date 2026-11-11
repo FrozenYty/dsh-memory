@@ -7,6 +7,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-11-11
+
 ### Added
 
 - `memory_audit` tool and `scripts/check-evidence.mjs`: report entries with no `Evidence:` line and
@@ -15,6 +17,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `memory_verify` now refreshes the entry's `updated` date, so reviewing an entry resets its audit
   age.
 - `test/fixtures/notebook`: a five-entry fixture, so the suite behaves the same locally and in CI.
+
+### Changed
+
+- The test suite no longer resolves the author's own notebook outside the repository. It read
+  `../../.agents/memory`, which exists on one machine and in no CI checkout, so every
+  notebook-dependent check failed on the first CI run.
 
 ## [0.1.0] — 2026-11-11
 
@@ -47,5 +55,6 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory-notebook/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/FrozenYty/dsh-memory-notebook/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.2.0
 [0.1.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.1.0
