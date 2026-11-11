@@ -443,8 +443,17 @@ export function writeEntryFile(dir, fields) {
   const path = join(dir, fields.key + '.md')
   const created = !existsSync(path)
   const today = new Date().toISOString().slice(0, 10)
+
+  // Keep the existing triggers when the caller does not supply new ones. An update that omits them
+  // would otherwise silently erase the entry's recall vocabulary — the entry stays, but stops being
+  // findable, and nothing reports it.
+  let triggers = String(fields.triggers ?? '').trim()
+  if (!created && triggers.length === 0) {
+    const { meta } = splitFrontmatter(readFileSync(path, 'utf8'))
+    triggers = String(meta.triggers ?? '').trim()
+  }
+
   const lines = ['---', `status: ${fields.status}`, `updated: ${today}`]
-  const triggers = String(fields.triggers ?? '').trim()
   if (triggers.length > 0) lines.push(`triggers: ${triggers}`)
   lines.push('---', '')
   lines.push(`# ${fields.title}`, '')

@@ -34,6 +34,8 @@ together. Read this before adding, moving or renaming a document.
 | Adding a behaviour with a non-obvious tradeoff | a new ADR, and its row in [adr/](#decision-records) below |
 | Any user-visible behaviour | `CHANGELOG.md` |
 | An entry format field (`triggers`, `status`, `Evidence:`) | both READMEs, `architecture-en.md`, the `memory_write` description |
+| Adding or changing a `scripts/*.mjs` gate | the `check` job in CI, and the tables in `AGENTS.md` **and** `CONTRIBUTING.md` |
+| The trigger-matching rule (weights, phrases, prefix) | `docs/architecture-en.md`, and the trigger note in both READMEs |
 
 ## Decision records
 

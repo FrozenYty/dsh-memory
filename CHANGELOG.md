@@ -7,6 +7,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.7.1] — 2026-11-11
+
+### Fixed
+
+- The bundled policy was seeded only from the index section, so a profile with `showIndex: false`
+  and recall enabled never received it. Seeding now also runs from the recall path.
+- Updating an entry without passing `triggers` erased the existing ones: the entry survived but
+  stopped being findable, and nothing reported it. An omitted value now keeps the stored triggers;
+  an explicit value replaces them.
+
 ## [0.7.0] — 2026-11-11
 
 ### Changed
@@ -124,7 +134,8 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory-notebook/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/FrozenYty/dsh-memory-notebook/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.7.1
 [0.7.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.7.0
 [0.6.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.6.0
 [0.5.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.5.0
