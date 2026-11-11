@@ -105,6 +105,7 @@ Evidence: `exact command or error text that proves it`
 | `memory_write` | Create or update an entry; `evidence` is required. |
 | `memory_verify` | Promote to `verified`, or retire to `disputed`. |
 | `memory_audit` | Entries with no `Evidence:`, entries untouched for long, and `INDEX.md` drift in either direction. |
+| `memory_health` | Whether memory is broken or merely had nothing to say. `ok`, `degraded`, `broken`, `absent`, `unconfigured`. |
 
 ## Why it is cheap
 

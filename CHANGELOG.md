@@ -7,6 +7,25 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.11.0] — 2026-11-11
+
+### Added
+
+- **`memory_health`: capability diagnosed separately from results.** A notebook that cannot be read and
+  a notebook with nothing relevant both return no hits, and a query result cannot tell them apart — so
+  the user concludes the feature is useless while the plugin is either fine or broken and says nothing
+  either way. It reports whether the notebook can be read and **written**, whether `INDEX.md` agrees
+  with the directory, how many more entries fit before the index truncates, which entries lack triggers
+  or `Evidence:`, and whether this session actually injected an index or published a recall.
+  `absent` and `unconfigured` are not failures. [ADR 0012](docs/adr/12-health-check.md)
+- The fixture notebook carries a policy entry, so the healthy state it asserts is the state a real
+  notebook is in.
+
+### Changed
+
+- The evidence-hygiene check builds its own bad entry instead of borrowing one from the fixture. It was
+  asserting that the code works by relying on the fixture happening to contain a violation.
+
 ## [0.10.0] — 2026-11-11
 
 ### Added
@@ -226,7 +245,8 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory-notebook/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/FrozenYty/dsh-memory-notebook/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.11.0
 [0.10.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.10.0
 [0.9.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.9.0
 [0.8.1]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.8.1

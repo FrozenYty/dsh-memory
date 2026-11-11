@@ -41,6 +41,20 @@ one). An update to an existing entry never grows the list, so it is always allow
 
 See [ADR 0009](adr/09-derived-index-and-write-refusal.md).
 
+## Knowing whether it is working
+
+A notebook that cannot be read and a notebook with nothing relevant both return no hits, and a query
+result cannot tell them apart. The user then concludes the feature is useless while the plugin is
+either fine or broken, and either way silent.
+
+`memory_health` answers the capability question instead: can the directory be read and written, does
+the index agree with it, how much room is left, which entries lack triggers or evidence, and whether
+this session injected anything. It reports `ok`, `degraded`, `broken`, `absent` or `unconfigured` — and
+`absent` is not a failure, because a plugin that has never been written to has no directory and
+creating one everywhere would be worse.
+
+See [ADR 0012](adr/12-health-check.md).
+
 ## Capture
 
 The plugin makes the notebook usable; nothing made it written to. Capture depended entirely on the

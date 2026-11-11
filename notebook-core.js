@@ -3,7 +3,7 @@
  * message-to-entry matching. No harness imports live here, so this module is directly
  * testable and the plugin entry stays thin.
  */
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { accessSync, constants, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 
@@ -566,6 +566,123 @@ export function indexBudgetVerdict(entries, config, newFile) {
   const after = projectedIndexChars(entries, config, [newFile])
   if (after <= budget) return { ok: true, current, after, budget }
   return { ok: false, current, after, budget }
+}
+
+// ---------------------------------------------------------------------------
+// diagnosis
+// ---------------------------------------------------------------------------
+
+/**
+ * Report what is wrong with a notebook, distinguishing "broken" from "empty".
+ *
+ * The failure this exists to prevent is the quiet one: memory stops working, nothing says so, and the
+ * user concludes the feature is useless rather than broken. That happens most easily when a working
+ * notebook returns no hits — which is indistinguishable from a notebook that cannot be read at all,
+ * unless something checks the capability separately from the result.
+ *
+ * Every check here is about capability: can it read, can it write, will entries disappear. None is
+ * about whether recall *should* have fired.
+ */
+export function diagnoseNotebook(config, cwd) {
+  const problems = []
+  const dirs = resolveDirs(config, cwd)
+
+  if (dirs.length === 0) {
+    return {
+      status: 'unconfigured',
+      dir: null,
+      entries: 0,
+      index: null,
+      evidence: null,
+      problems: ['no memory directory is configured: set workspaceDir or machineDir'],
+    }
+  }
+
+  const dir = dirs[0]
+  if (!existsSync(dir)) {
+    // Not an error. A plugin that has never been written to has no directory, and creating one in
+    // every project the agent opens would be worse than an empty notebook.
+    return { status: 'absent', dir, entries: 0, index: null, evidence: null, problems: [] }
+  }
+
+  let entries
+  try {
+    entries = scanDir(dir)
+  } catch (error) {
+    return {
+      status: 'broken',
+      dir,
+      entries: 0,
+      index: null,
+      evidence: null,
+      problems: [`cannot read the notebook: ${error.message}`],
+    }
+  }
+
+  let writable = true
+  try {
+    accessSync(dir, constants.W_OK)
+  } catch {
+    writable = false
+    problems.push('the notebook is not writable: memories written this session will not persist')
+  }
+
+  const visible = entries.filter((entry) => entry.status !== 'disputed')
+  const drift = indexDrift(dir)
+  if (drift.unlisted.length > 0) {
+    problems.push(`${drift.unlisted.length} file(s) are not in INDEX.md, so the injected index cannot name them`)
+  }
+  if (drift.missing.length > 0) {
+    problems.push(`${drift.missing.length} line(s) in INDEX.md name files that no longer exist`)
+  }
+
+  const chars = projectedIndexChars(entries, config)
+  const budget = config.indexBudgetChars
+  if (chars > budget) {
+    problems.push(`the index needs ${chars} characters and the budget is ${budget}: entries past the cut are never injected`)
+  }
+
+  // Average filename length, so "how many more fit" is an estimate rather than a guess about the
+  // unknown name of a future entry.
+  const averageFileChars =
+    entries.length === 0
+      ? 30
+      : Math.round(entries.reduce((sum, entry) => sum + entry.file.length + 3, 0) / entries.length)
+  const slotsLeft = Math.max(0, Math.floor((budget - chars) / averageFileChars))
+
+  const withoutTriggers = entries.filter((entry) => entry.status !== 'disputed' && (entry.triggers ?? []).length === 0)
+  if (withoutTriggers.length > 0) {
+    // Not fatal — the title and name still match — but the entry is far harder to reach.
+    problems.push(`${withoutTriggers.length} entry(ies) carry no triggers and can only be reached by name or title`)
+  }
+
+  const withoutEvidence = entries.filter((entry) => entry.status !== 'disputed' && !/Evidence:/.test(entry.body))
+  if (withoutEvidence.length > 0) {
+    problems.push(`${withoutEvidence.length} entry(ies) carry no Evidence line, so their claims cannot be re-checked`)
+  }
+
+  const policy = entries.some((entry) => entry.key === 'notebook-policy')
+  if (!policy) problems.push('no notebook-policy entry: the rules for this notebook are missing')
+
+  const status = writable && drift.unlisted.length === 0 && drift.missing.length === 0 && chars <= budget
+    ? problems.length === 0
+      ? 'ok'
+      : 'degraded'
+    : 'broken'
+
+  return {
+    status,
+    dir,
+    entries: entries.length,
+    index: { agrees: drift.unlisted.length === 0 && drift.missing.length === 0, chars, budget, slotsLeft },
+    evidence: {
+      disputed: entries.length - visible.length,
+      withoutTriggers: withoutTriggers.map((entry) => entry.key),
+      withoutEvidence: withoutEvidence.map((entry) => entry.key),
+      policy,
+    },
+    problems,
+  }
 }
 
 // ---------------------------------------------------------------------------
