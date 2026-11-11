@@ -17,3 +17,4 @@ This list is maintained by the plugin. Entries are added and removed automatical
 - `forwardable-text-carries-no-local-paths.md`
 - `git-push-piped-fails-in-sandbox.md`
 - `dsh-local-plugin-cannot-import-dsh-packages.md`
+- `notebook-policy.md`

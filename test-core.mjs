@@ -15,6 +15,7 @@ import {
   ACK_PATTERN,
   auditEntries,
   buildIndex,
+  diagnoseNotebook,
   ensurePolicyEntry,
   indexBudgetVerdict,
   indexDrift,
@@ -272,17 +273,27 @@ check(
 // ---------------------------------------------------------------------------
 console.log('\n[7] evidence hygiene')
 // ---------------------------------------------------------------------------
-const audit = auditEntries(entries, { staleDays: 90 })
+// Built here rather than borrowed from the fixture: the check must work because the code works, not
+// because the fixture happens to contain a bad entry.
+const auditDir = mkdtempSync(join(tmpdir(), 'mn-audit-'))
+writeFileSync(join(auditDir, 'no-evidence.md'), '# No evidence\n\nA claim with no proof.\n', 'utf8')
+writeFileSync(join(auditDir, 'has-evidence.md'), '# Has evidence\n\nA claim.\n\nEvidence: `a command`\n', 'utf8')
+const auditList = loadNotebook({ ...config, workspaceDir: auditDir }, '.')
+const audit = auditEntries(auditList, { staleDays: 90 })
 check(
   'an entry without an Evidence line is reported',
-  audit.missingEvidence.length === 1 && audit.missingEvidence[0].key === 'usb-camera-arrival-facts',
+  audit.missingEvidence.length === 1 && audit.missingEvidence[0].key === 'no-evidence',
   audit.missingEvidence.map((entry) => entry.key).join(',') || '(none)',
+)
+check(
+  'the fixture notebook carries evidence everywhere',
+  auditEntries(entries, { staleDays: 90 }).missingEvidence.length === 0,
+  auditEntries(entries, { staleDays: 90 }).missingEvidence.map((entry) => entry.key).join(','),
 )
 check('fresh fixtures are not stale', audit.stale.length === 0, `${audit.stale.length} stale`)
 
 const aged = auditEntries(entries, { staleDays: 1, now: Date.now() + 10 * 86_400_000 })
 check('aging is reported against the clock it is given', aged.stale.length === entries.length, `${aged.stale.length}`)
-
 const writtenDir = mkdtempSync(join(tmpdir(), 'mn-audit-'))
 writeEntryFile(writtenDir, {
   key: 'has-evidence',
@@ -356,10 +367,13 @@ check(
   seededIndex.includes("`notebook-policy.md` holds this notebook"),
   seededIndex.slice(0, 260),
 )
-const noPolicyIndex = buildIndex(entries, config)
+// Asked of a notebook that genuinely has no policy, not of whatever the fixture happens to hold.
+const withoutPolicy = entries.filter((entry) => entry.key !== 'notebook-policy')
+const noPolicyIndex = buildIndex(withoutPolicy, config)
 check(
   'the index does not advertise a policy that is absent',
   !noPolicyIndex.includes('notebook-policy.md'),
+  noPolicyIndex.slice(0, 260),
 )
 
 // The template is a package resource, not a file every user is assumed to have. If it stops
@@ -519,7 +533,57 @@ check(
 )
 
 // ---------------------------------------------------------------------------
-console.log('\n[14] safety')
+console.log('\n[15] health: broken is not the same as empty')
+// ---------------------------------------------------------------------------
+// The failure this catches is the quiet one. A notebook that cannot be read and a notebook with
+// nothing to say both return no hits, and the user concludes the feature is useless rather than
+// broken — so capability is checked separately from the result.
+const unconfigured = diagnoseNotebook({ workspaceDir: '', machineDir: '' }, '.')
+check('an unconfigured notebook says so', unconfigured.status === 'unconfigured', JSON.stringify(unconfigured))
+
+const absent = diagnoseNotebook({ ...config, workspaceDir: 'definitely-not-here' }, emptyDir)
+check('a notebook that was never created is absent, not broken', absent.status === 'absent', JSON.stringify(absent))
+check('and it has nothing to complain about', absent.problems.length === 0)
+
+const healthy = diagnoseNotebook(config, FIXTURE_ROOT)
+check('a healthy notebook reports ok', healthy.status === 'ok', JSON.stringify(healthy.problems))
+check('it counts the entries', healthy.entries === entries.length, `${healthy.entries}`)
+check('it reports remaining index room', healthy.index.slotsLeft > 0, JSON.stringify(healthy.index))
+check('it confirms the index agrees', healthy.index.agrees === true)
+check('the fixture policy is found', healthy.evidence.policy === true)
+
+const driftHealthDir = mkdtempSync(join(tmpdir(), 'mn-health-'))
+writeFileSync(join(driftHealthDir, 'invisible.md'), '# invisible\n\nEvidence: none\n', 'utf8')
+writeFileSync(join(driftHealthDir, 'INDEX.md'), '# Memory index\n\n', 'utf8')
+const drifting = diagnoseNotebook({ ...config, workspaceDir: driftHealthDir }, '.')
+check('an index that does not agree is not ok', drifting.status !== 'ok', JSON.stringify(drifting))
+check(
+  'and the missing line is named as the problem',
+  drifting.problems.some((problem) => /not in INDEX/.test(problem)),
+  JSON.stringify(drifting.problems),
+)
+
+const tightHealth = diagnoseNotebook({ ...config, indexBudgetChars: 200 }, FIXTURE_ROOT)
+check('a notebook whose index will truncate is not ok', tightHealth.status === 'broken', JSON.stringify(tightHealth))
+check(
+  'and truncation is named',
+  tightHealth.problems.some((problem) => /never injected/.test(problem)),
+  JSON.stringify(tightHealth.problems),
+)
+
+const noTriggerDir = mkdtempSync(join(tmpdir(), 'mn-health2-'))
+writeFileSync(join(noTriggerDir, 'bare.md'), '# A bare entry\n\nEvidence: none\n', 'utf8')
+writeFileSync(join(noTriggerDir, 'INDEX.md'), '- `bare.md`\n', 'utf8')
+const bare = diagnoseNotebook({ ...config, workspaceDir: noTriggerDir }, '.')
+check('an entry with no triggers is degraded, not broken', bare.status === 'degraded', JSON.stringify(bare))
+check(
+  'and the entry is named',
+  bare.evidence.withoutTriggers.includes('bare'),
+  JSON.stringify(bare.evidence),
+)
+
+// ---------------------------------------------------------------------------
+console.log('\n[16] safety')
 // ---------------------------------------------------------------------------
 const readOnlyDir = mkdtempSync(join(tmpdir(), 'mn-ro-'))
 writeFileSync(join(readOnlyDir, 'broken.md'), '---\nstatus: candidate\n---\nno heading, no trouble\n', 'utf8')

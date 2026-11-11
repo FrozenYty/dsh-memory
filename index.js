@@ -25,6 +25,7 @@ import { readFileSync } from 'node:fs'
 import {
   auditEntries,
   buildIndex,
+  diagnoseNotebook,
   ensurePolicyEntry,
   indexBudgetVerdict,
   indexDrift,
@@ -128,6 +129,10 @@ export function apply(ctx, config) {
   const seenBySession = new Map()
   /** Sessions that already received the capture hint; it is once per session by design. */
   const hintedSessions = new Set()
+  /** Sessions where the index actually reached the prompt; the health tool reports this. */
+  const indexInjected = new Set()
+  /** Entries published by recall per session; the health tool reports this. */
+  const recallsBySession = new Map()
 
   const seenFor = (sessionId) => {
     let seen = seenBySession.get(sessionId)
@@ -151,6 +156,8 @@ export function apply(ctx, config) {
     const sessionId = session?.id
     if (sessionId === undefined) return
     hintedSessions.delete(sessionId)
+    indexInjected.delete(sessionId)
+    recallsBySession.delete(sessionId)
     queryBySession.delete(sessionId)
     recallBySession.delete(sessionId)
     seenBySession.delete(sessionId)
@@ -196,7 +203,12 @@ export function apply(ctx, config) {
         const cwd = cwdOf(context)
         seedPolicyOnce(cwd)
         syncIndexOnce(cwd)
-        return buildIndex(loadNotebook(cfg, cwd), cfg)
+        const text = buildIndex(loadNotebook(cfg, cwd), cfg)
+        // Recorded, not assumed: the health tool's job is to say whether the index actually reached
+        // a prompt, which a configured-but-empty notebook does not.
+        const sessionId = sessionIdOf(context)
+        if (text.length > 0 && sessionId !== undefined) indexInjected.add(sessionId)
+        return text
       },
     })
   }
@@ -227,6 +239,7 @@ export function apply(ctx, config) {
         const picked = pickHits(candidates, query, cfg)
         const text = picked.length === 0 ? '' : renderRecall(picked, cfg.recallBudgetChars)
         for (const hit of picked) seen.add(hit.entry.key)
+        if (picked.length > 0) recallsBySession.set(sessionId, (recallsBySession.get(sessionId) ?? 0) + picked.length)
         recallBySession.set(sessionId, { query, text })
         return text
       },
@@ -465,6 +478,71 @@ export function apply(ctx, config) {
         const status = args.status === 'verified' ? 'verified' : args.status === 'disputed' ? 'disputed' : 'candidate'
         setStatus(entry.dir, entry.key, status)
         return { name: entry.key, status }
+      },
+    }),
+  )
+
+  ctx.tools.register(
+    defineTool({
+      name: 'memory_health',
+      description:
+        'Diagnose the memory notebook. Separates "memory is broken" from "nothing matched", which look identical from a query that returned no hits and are the reason a working plugin gets uninstalled. Reports whether the notebook can be read and written, whether the injected index agrees with the directory, how many more entries fit, and whether this session actually injected and recalled anything. Use when the user asks whether memory works, or when recall seems to have stopped.',
+      parameters: { type: 'object', additionalProperties: false, properties: {} },
+      output: {
+        schema: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['status', 'entries', 'problems', 'session'],
+          properties: {
+            status: {
+              type: 'string',
+              description:
+                'ok | degraded (works, with something to fix) | broken (cannot persist or read) | absent (no notebook yet) | unconfigured',
+            },
+            dir: { type: ['string', 'null'] },
+            entries: { type: 'number' },
+            problems: { type: 'array', items: { type: 'string' } },
+            index: {
+              type: ['object', 'null'],
+              additionalProperties: false,
+              properties: {
+                agrees: { type: 'boolean' },
+                chars: { type: 'number' },
+                budget: { type: 'number' },
+                slotsLeft: { type: 'number', description: 'Estimated further entries before the index truncates' },
+              },
+            },
+            evidence: {
+              type: ['object', 'null'],
+              additionalProperties: false,
+              properties: {
+                disputed: { type: 'number' },
+                withoutTriggers: { type: 'array', items: { type: 'string' } },
+                withoutEvidence: { type: 'array', items: { type: 'string' } },
+                policy: { type: 'boolean' },
+              },
+            },
+            session: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                indexInjected: { type: 'boolean', description: 'Whether the index reached this session' },
+                recalls: { type: 'number', description: 'Entries published by recall this session' },
+              },
+            },
+          },
+        },
+      },
+      async execute(_args, exec) {
+        const report = diagnoseNotebook(cfg, exec?.agent?.session?.header?.cwd)
+        const sessionId = exec?.agent?.session?.id
+        return {
+          ...report,
+          session: {
+            indexInjected: sessionId !== undefined && indexInjected.has(sessionId),
+            recalls: sessionId === undefined ? 0 : (recallsBySession.get(sessionId) ?? 0),
+          },
+        }
       },
     }),
   )
