@@ -95,6 +95,15 @@ const mixed = tokenize('PlatformIO 编译失败 openSSL')
 check('latin tokens survive', mixed.has('platformio') && mixed.has('openssl'))
 check('single letters are dropped', !mixed.has('a'))
 check('cjk becomes bigrams', tokenize('相机打不开').has('相机') && tokenize('相机打不开').has('不开'))
+
+// Mixed script with no separator is how a Chinese user actually types. Splitting on non-word
+// characters left `mcp挂了` as one token, treated as CJK and shredded into bigrams, so `mcp`
+// vanished from the query entirely.
+const glued = tokenize('mcp挂了')
+check('a glued latin word survives', glued.has('mcp'), [...glued].join(','))
+check('its cjk half still bigrams', glued.has('挂了'), [...glued].join(','))
+check('a glued long word is not shredded', tokenize('platformio编译').has('platformio'), [...tokenize('platformio编译')].join(','))
+check('glued and spaced forms agree', [...tokenize('mcp挂了')].sort().join() === [...tokenize('mcp 挂了')].sort().join())
 for (const ack of ['好', '好的。', 'continue', 'OK', '收到！']) {
   check(`"${ack}" is an acknowledgement`, ACK_PATTERN.test(ack))
 }
@@ -347,7 +356,94 @@ check('the bundled policy template ships', shippedTemplate.length > 1000, `${shi
 check('the shipped template has an Evidence line', shippedTemplate.includes('Evidence:'))
 
 // ---------------------------------------------------------------------------
-console.log('\n[10] safety')
+console.log('\n[10] recall quality: false-positive budget')
+// ---------------------------------------------------------------------------
+// Ordinary work talk that shares vocabulary with the fixtures but is not about any of them.
+// This is the budget that matters: recall improvements must not be paid for here. Each query
+// below has at least one word that appears somewhere in the fixture notebook.
+const offTopic = [
+  '今天天气怎么样',
+  '帮我看看这段代码',
+  '这个函数什么意思',
+  '进度怎么样了',
+  '写个排序算法',
+  'refactor this module',
+  '优化一下性能',
+  '这个变量命名不好',
+  '把这段抽成函数',
+  'check the config',
+  'restart the service',
+  'the path is wrong',
+  '下载一个文件',
+  '描述怎么写',
+  '枚举一下',
+]
+let falsePositives = 0
+for (const query of offTopic) {
+  const hits = pickHits(entries, query, config)
+  if (hits.length > 0) {
+    falsePositives += 1
+    console.log(`  FP    "${query}" -> ${names(hits)}`)
+  }
+}
+check(
+  `no false positive across ${offTopic.length} off-topic queries`,
+  falsePositives === 0,
+  `${falsePositives} false positive(s)`,
+)
+
+// ---------------------------------------------------------------------------
+console.log('\n[11] recall quality: glued mixed-script input')
+// ---------------------------------------------------------------------------
+// A Chinese user types `mcp挂了` and `platformio编译` without spaces. Before the tokenizer fix
+// these recalled nothing: the Latin word was shredded into CJK bigrams.
+const gluedCases = [
+  ['github连不上', 'github-blocked-context7-direct'],
+  ['技能消失了', 'skill-frontmatter-yaml'],
+  ['mcp挂了', 'mcp-mounting-lifecycle'],
+  ['相机打不开', 'usb-camera-arrival-facts'],
+  ['写入被拒绝访问', 'low-integrity-label-writes'],
+]
+for (const [query, expected] of gluedCases) {
+  const hits = pickHits(entries, query, config)
+  check(`glued "${query}" -> ${expected}`, hits.length > 0 && hits[0].entry.key === expected, names(hits))
+}
+
+// A word that names an entry and triggers it is that entry's identifier: one is enough.
+const identifierOnly = pickHits(entries, 'mcp', config)
+check(
+  'a single identifier word recalls on its own',
+  identifierOnly.length > 0 && identifierOnly[0].entry.key === 'mcp-mounting-lifecycle',
+  names(identifierOnly),
+)
+const bodyOnlyWord = pickHits(entries, 'sandbox', config)
+check(
+  'a word that only appears in a body does not recall alone',
+  bodyOnlyWord.length === 0 || bodyOnlyWord[0].entry.key === 'git-push-piped-fails-in-sandbox',
+  names(bodyOnlyWord),
+)
+
+// A whole Chinese word of two characters is one bigram, while a three-character word is two — so
+// `相机` scored one hit and `贡献者` scored two, though both are equally specific. A Chinese word
+// also cannot become an identifier, because filenames are ASCII. It must reach the floor alone.
+const chineseWordEntry = {
+  key: 'ascii-name-only',
+  file: 'ascii-name-only.md',
+  dir: '',
+  title: 'An entry whose name carries no Chinese',
+  status: 'candidate',
+  triggers: ['相机'],
+  body: 'nothing relevant here',
+  mtimeMs: 0,
+}
+const twoChar = scoreEntry(chineseWordEntry, tokenize('相机那次'))
+check('a two-character Chinese trigger reaches the floor alone', twoChar.hits >= 2, JSON.stringify(twoChar))
+const singleChar = { ...chineseWordEntry, triggers: ['好'] }
+const oneChar = scoreEntry(singleChar, tokenize('好的'))
+check('a single Chinese character does not', oneChar.hits < 2, JSON.stringify(oneChar))
+
+// ---------------------------------------------------------------------------
+console.log('\n[12] safety')
 // ---------------------------------------------------------------------------
 const readOnlyDir = mkdtempSync(join(tmpdir(), 'mn-ro-'))
 writeFileSync(join(readOnlyDir, 'broken.md'), '---\nstatus: candidate\n---\nno heading, no trouble\n', 'utf8')
