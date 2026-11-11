@@ -7,6 +7,39 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.13.1] — 2026-11-11
+
+### Changed
+
+- **Both READMEs rewritten.** The old text said "memory the agent actually uses" and never mentioned
+  that it usually does not. It now leads with the measured limit — around one question in five finds
+  the right entry when phrased in words the notebook does not contain — because a reader who installs
+  expecting an assistant that remembers for them will be disappointed, and a reader who understands it
+  is an indexed notebook will not be.
+- **Three sections added to both READMEs:** a measured quality table, a comparison against the four
+  nearest projects, and a troubleshooting list. The comparison draws on a survey of the field; the
+  troubleshooting covers the failure this project actually hit — a schema the host rejects unloads the
+  whole plugin, and every tool turns into `unknown tool` with nothing saying why.
+- **The trigger advice now says what the measurement showed.** Write the words you complain in, not the
+  words a manual would use, with the four concrete pairs that took a blind set from 3/14 to 11/11.
+- **`docs/architecture-en.md` gained a contents list and a "What it measures" section.** Seventeen
+  sections over three hundred lines had no navigation, and the measured generalisation numbers existed
+  only in a conversation.
+
+### Fixed
+
+- **Six stale facts across both READMEs.** "Four tools" (seven), "67 checks" (now described by coverage
+  instead of a count), "five-entry fixture" (fourteen), and a cost table quoting eleven entries at 620
+  characters — the notebook was at twenty-five entries and 1173 characters. The cost table is now
+  **per entry**, because a total goes stale and a rate does not.
+- **`docs/architecture-en.md` described a mechanism that no longer exists.** Its "Revisit when" line
+  still named "the notebook stops fitting in the index budget", which v0.13.0 removed; the failure
+  table still described truncation; and it said `ctx.tools.register` × 4.
+- **A paragraph interrupted a list in the Matching section**, splitting it in two. It is now one list
+  followed by the note.
+- `docs/INDEX-en.md` gained the coupling it was missing: a recall judgement lives in `test/qrels.json`,
+  and changing one is a reviewed decision rather than a side effect.
+
 ## [0.13.0] — 2026-11-11
 
 ### Changed
@@ -291,7 +324,8 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory-notebook/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/FrozenYty/dsh-memory-notebook/compare/v0.13.1...HEAD
+[0.13.1]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.13.1
 [0.13.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.13.0
 [0.12.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.12.0
 [0.11.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.11.0
