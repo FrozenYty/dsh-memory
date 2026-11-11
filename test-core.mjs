@@ -16,13 +16,16 @@ import {
   auditEntries,
   buildIndex,
   ensurePolicyEntry,
+  indexBudgetVerdict,
   indexDrift,
   loadNotebook,
   pickHits,
+  projectedIndexChars,
   renderRecall,
   scanDir,
   scoreEntry,
   setStatus,
+  syncIndexFile,
   tokenize,
   writeEntryFile,
 } from './notebook-core.js'
@@ -450,14 +453,61 @@ check('body words accumulate but do not qualify', bodyScored.strong === false &&
 check('such an entry is never recalled', pickHits([bodyOnly], '今天天气怎么样', config).length === 0)
 
 // ---------------------------------------------------------------------------
-console.log('\n[12] safety')
+console.log('\n[12] index is derived, not hand-maintained')
+// ---------------------------------------------------------------------------
+// The index must describe the directory exactly. A line for a file that is gone makes it lie; a
+// file with no line is invisible, because the injected index never names it. Both have happened.
+const derived = mkdtempSync(join(tmpdir(), 'mn-derived-'))
+writeFileSync(join(derived, 'first.md'), '# first\n', 'utf8')
+writeFileSync(join(derived, 'second.md'), '# second\n', 'utf8')
+writeFileSync(join(derived, 'INDEX.md'), '- `first.md`\n- `second.md`\n', 'utf8')
+
+rmSync(join(derived, 'first.md'))
+syncIndexFile(derived)
+let listed = readFileSync(join(derived, 'INDEX.md'), 'utf8')
+check('a deleted entry leaves the index', !listed.includes('first.md'), listed)
+check('the surviving entry stays', listed.includes('`second.md`'), listed)
+
+writeFileSync(join(derived, 'third.md'), '# third\n', 'utf8')
+syncIndexFile(derived)
+listed = readFileSync(join(derived, 'INDEX.md'), 'utf8')
+check('a file written outside the plugin is indexed', listed.includes('`third.md`'), listed)
+check(
+  'the existing order is preserved',
+  listed.indexOf('second.md') < listed.indexOf('third.md'),
+  listed,
+)
+check('the derived index has no stale lines', indexDrift(derived).missing.length === 0)
+
+// ---------------------------------------------------------------------------
+console.log('\n[13] the index refuses to grow past its budget')
+// ---------------------------------------------------------------------------
+// Truncation is the failure this prevents: entries past the cut are never injected, so they may as
+// well not exist, and nothing reports that they were dropped.
+const roomy = indexBudgetVerdict(entries, { ...config, indexBudgetChars: 100000 }, 'brand-new-entry.md')
+check('a write that fits is allowed', roomy.ok === true, JSON.stringify(roomy))
+
+const tight = indexBudgetVerdict(entries, { ...config, indexBudgetChars: 200 }, 'brand-new-entry.md')
+check('a write that would truncate is refused', tight.ok === false, JSON.stringify(tight))
+check('the refusal reports the numbers', tight.current > 0 && tight.after > tight.current && tight.budget === 200, JSON.stringify(tight))
+
+const exact = projectedIndexChars(entries, config)
+const boundary = indexBudgetVerdict(entries, { ...config, indexBudgetChars: exact }, 'x.md')
+check('the boundary is measured, not guessed', boundary.ok === false && boundary.current === exact, JSON.stringify(boundary))
+check(
+  'a disputed entry frees room',
+  projectedIndexChars([...entries, { ...entries[0], key: 'gone', file: 'gone.md', status: 'disputed' }], config) === exact,
+)
+
+// ---------------------------------------------------------------------------
+console.log('\n[14] safety')
 // ---------------------------------------------------------------------------
 const readOnlyDir = mkdtempSync(join(tmpdir(), 'mn-ro-'))
 writeFileSync(join(readOnlyDir, 'broken.md'), '---\nstatus: candidate\n---\nno heading, no trouble\n', 'utf8')
 const broken = scanDir(readOnlyDir)
 check('an entry without a heading still loads', broken.length === 1 && broken[0].title === 'broken')
 
-for (const dir of [emptyDir, writeDir, readOnlyDir, writtenDir, seedRoot, driftDir, keepDir]) {
+for (const dir of [emptyDir, writeDir, readOnlyDir, writtenDir, seedRoot, driftDir, keepDir, derived]) {
   try {
     rmSync(dir, { recursive: true, force: true })
   } catch {

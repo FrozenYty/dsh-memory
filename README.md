@@ -65,6 +65,7 @@ no `Config` schema, so values are taken as given; the defaults below are applied
 | `minRecallHits` | `2` | Distinct query tokens that must match. |
 | `minQueryChars` | `6` | Shorter messages never trigger recall. |
 | `skipAcknowledgements` | `true` | Ignore messages that are only an acknowledgement. |
+| `captureHintRatio` | `0.6` | Context-window fraction at which the one-shot "save what matters" hint appears. `0` disables it. |
 
 ## Write an entry
 

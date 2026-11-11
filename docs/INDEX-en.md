@@ -49,6 +49,8 @@ together. Read this before adding, moving or renaming a document.
 | [0006](adr/06-evidence-audit-by-age.md) | Evidence is audited by age and completeness, never by execution | Accepted |
 | [0007](adr/07-policy-in-the-notebook.md) | The notebook's policy lives in the notebook, not in a skill | Superseded by 0008 |
 | [0008](adr/08-policy-template-and-seeding.md) | The policy ships with the plugin and is seeded where a notebook lacks one | Accepted |
+| [0009](adr/09-derived-index-and-write-refusal.md) | The index is derived data; a write that would truncate it is refused | Accepted |
+| [0010](adr/10-capture-hint.md) | A capture hint before compaction, not automatic capture | Accepted |
 
 Add a row here whenever an ADR is added. `scripts/check-docs.mjs` fails the build when an ADR
 exists on disk but is not listed in this table.

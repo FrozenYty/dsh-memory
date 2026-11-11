@@ -26,6 +26,38 @@ Both prompt parts are registered globally, not per agent, because the content is
 session working directory rather than from the agent's history. Both are pure functions of the
 filesystem plus one cache, so neither writes session events.
 
+## The index is computed, not maintained
+
+`INDEX.md` is rebuilt from a directory scan. The plugin owns the lines — a file added outside it is
+indexed, a deleted one drops out — and the human owns the order, because "most likely first" is a
+judgement no script can make. `syncIndexFile` runs on every plugin write, on a status change, and once
+per directory per process, so a directory changed by another tool is reconciled rather than left to rot.
+
+A write that would push the injected index past `indexBudgetChars` is **refused before it lands**. The
+reason is not that a long index is ugly: it is that `buildIndex` truncates, and an entry past the cut
+is never injected — it may as well not exist, and nothing reports that it was dropped. Refusing keeps
+the fact in the conversation and tells the model how to make room (retire an entry, or fold two into
+one). An update to an existing entry never grows the list, so it is always allowed.
+
+See [ADR 0009](adr/09-derived-index-and-write-refusal.md).
+
+## Capture
+
+The plugin makes the notebook usable; nothing made it written to. Capture depended entirely on the
+model deciding, mid-task, that something was worth keeping — the most expensive moment to ask and the
+least reliable.
+
+When context pressure crosses `captureHintRatio` (default 0.6), a one-shot hint is published for the
+session: the conversation is close to compaction, a summary will not keep everything, write anything
+that was hard to work out. It names the shape worth keeping and says to ignore it otherwise. It
+**writes nothing** — the model decides.
+
+This is deliberately not the automatic capture that `EverOS` implements (raw events appended at every
+turn boundary, batch extraction later). That design is better and it is the one to adopt if this
+plugin ever grows a store; it also costs a buffer whose lifecycle, failure modes and reconciliation
+need their own design, which is too much for a plugin whose selling point is that installing it is
+free. See [ADR 0010](adr/10-capture-hint.md).
+
 ## Where the policy lives
 
 The rules for writing into the notebook — what earns an entry, the two shapes, the entry format,
