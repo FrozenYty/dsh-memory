@@ -7,6 +7,37 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.15.0] — 2026-11-11
+
+### Changed
+
+- **Automatic recall is off by default.** The index still names every entry and its header still tells
+  the model to read one with `memory_read` when a name matches — but nothing is injected automatically
+  unless `recallEnabled: true` is set. This is Claude Code's design, adopted after measuring why our
+  version misbehaved.
+- **The reason is a measurement, not a preference.** A hostile set — ordinary talk that merely shares
+  vocabulary with the notebook — fired **5 of 18 times**: 证书考试过了 pulled the TLS entry, 笔记本屏幕有点暗
+  pulled the notebook policy, 插件挺多的 pulled two plugin entries. The 24 off-topic queries in
+  `qrels.json` fire zero times, but they were written by the same person who wrote the triggers.
+- **A threshold sweep showed the gate cannot fix it.** Correct recalls and false positives both score
+  4–5; raising the floor from 5 to 6 removes four of five false positives and four of six correct
+  recalls. `hits=3` leaves 1/18 recalled. There is no middle setting — see the table in the README.
+
+### Added
+
+- [ADR 0015](docs/adr/15-recall-is-model-driven-by-default.md), recording the measurement, the
+  alternative that was rejected, and the consequence that matters: a model that never reads the index
+  recalls nothing, and that failure is invisible where a wrong injection is not.
+- **Two new harness documents in the README** — the hostile query set and the threshold sweep — because
+  the old "0 false positives in 24" was true and misleading at once.
+
+### Notes
+
+- **This is a behaviour change, not a removal.** `recallEnabled: true` restores the previous default
+  exactly. The matcher, its tests, and its evaluation are untouched.
+- **`memory_usage` counts automatic publications only.** A notebook used entirely through `memory_read`
+  will report every entry as never used. The tool now says so rather than implying dead entries.
+
 ## [0.14.1] — 2026-11-11
 
 ### Fixed
@@ -409,7 +440,8 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/v0.14.1...HEAD
+[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.15.0
 [0.14.1]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.14.1
 [0.14.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.14.0
 [0.13.3]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.13.3
