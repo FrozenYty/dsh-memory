@@ -7,6 +7,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-11-11
+
+### Changed
+
+- The package name dropped its `@local/` scope: it is now `dsh-memory-notebook`, matching the
+  repository name and the plugin's display name. The scope protected nothing — the package is
+  private and never published — and it made two locally built plugins on this machine look like
+  different kinds of thing. The link path does not change; only the package identifier does, so the
+  plugin has to be removed and re-added.
+
 ## [0.4.0] — 2026-11-11
 
 ### Fixed
@@ -79,7 +89,8 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory-notebook/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/FrozenYty/dsh-memory-notebook/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.5.0
 [0.4.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.4.0
 [0.3.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.3.0
 [0.2.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.2.0
