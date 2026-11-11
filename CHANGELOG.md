@@ -7,6 +7,21 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-11-11
+
+### Fixed
+
+- A fresh install had no policy. `notebook-policy.md` was created in the author's own notebook and
+  shipped nowhere, so the injected index header named a file that existed for exactly one user
+  ([ADR 0008](docs/adr/08-policy-template-and-seeding.md), which supersedes 0007).
+
+### Added
+
+- `templates/notebook-policy.md`: the policy now ships with the plugin and is seeded into a notebook
+  that lacks one. Exclusive create — an edited policy is never overwritten — once per directory per
+  process, and only where `.agents/memory/` already exists.
+- The index header names the policy only when that entry is present.
+
 ## [0.3.0] — 2026-11-11
 
 ### Changed
@@ -64,7 +79,8 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory-notebook/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/FrozenYty/dsh-memory-notebook/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.4.0
 [0.3.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.3.0
 [0.2.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.2.0
 [0.1.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.1.0
