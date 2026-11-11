@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "记忆笔记本",
-    "description": "把 .agents/memory 里的笔记索引注入系统提示，并只在消息真正命中时召回那一条。"
+    "description": "你和 agent 共用的记忆笔记本：普通 markdown 文件，它看得见有哪些、能按需打开，也能把学到的写回去。笔记始终是你能读能改的文件。"
   }
 }

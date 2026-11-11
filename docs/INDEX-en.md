@@ -37,6 +37,7 @@ together. Read this before adding, moving or renaming a document.
 | Adding or changing a `scripts/*.mjs` gate | the `check` job in CI, and the tables in `AGENTS.md` **and** `CONTRIBUTING.md` |
 | The trigger-matching rule (weights, phrases, prefix) | `docs/architecture-en.md`, and the trigger note in both READMEs |
 | A recall judgement (what should match what) | `test/qrels.json` — a flipped case fails CI, so the edit is a reviewed decision, not a side effect |
+| A string the plugin page shows (`locale/*.json`) | both languages; `scripts/check-docs.mjs` fails when the key sets differ |
 
 ## Decision records
 
