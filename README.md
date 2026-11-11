@@ -2,8 +2,8 @@
 
 English | [中文](README-zh.md)
 
-Persistent memory for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness), built from a
-directory of markdown notes. No embeddings, no server, no model call per turn.
+**Your notes, visible to the agent.** A directory of markdown files that becomes its memory — no
+embeddings, no server, no model call per turn.
 
 **The honest one-line version:** it makes a curated notebook *visible* to the agent and lets it *write
 back*. It does not reliably *remember for you*. Measured on its own author's notebook, a question
