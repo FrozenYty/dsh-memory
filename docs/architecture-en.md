@@ -91,11 +91,13 @@ is what keeps one turn from paying for recall on every step.
 
 `pickHits` scores every candidate against the query's token set.
 
-- **Tokenising:** lowercase, split on everything but `[a-z0-9]` and CJK, then CJK runs become
-  bigrams. Bigrams are what let a two-character Chinese word match without a dictionary.
+- **Tokenising:** lowercase, then extract Latin runs and CJK runs **separately**. Splitting on
+  non-word characters was wrong for mixed script: `mcp挂了` has no separator, so it stayed one token,
+  was classified as CJK, and was shredded into bigrams (`mc`, `cp`, `p挂`, `挂了`) — the word `mcp`
+  vanished. Typing mixed script without spaces is the normal case for a Chinese user, so the two
+  scripts must be separated explicitly. CJK runs become bigrams.
 - **Weights:** each query token contributes once, at its strongest field — filename 4, title 3,
-  body 1. Triggers outrank all of them, because they are the author's own recall vocabulary: a
-  single-word trigger scores 5, a multi-word trigger scores 7.
+  body 1. Triggers outrank all of them: a single-word trigger scores 5, a multi-word trigger 7.
 - **A trigger is a phrase, and it counts only whole.** Every word of the phrase must be present for
   the trigger to score at all. This is what stops a generic word from carrying a specific phrase — a
   message containing "denied" does not match the trigger "dotnet pipe denied". Without this rule, a
@@ -103,6 +105,22 @@ is what keeps one turn from paying for recall on every step.
   also counts one hit per word, so a three-word phrase clears the two-hit floor on its own; that is
   what lets a short message ("mcp 挂了") recall one entry without lowering the floor for ordinary
   single words.
+- **A single-word trigger that also names the entry counts two.** A word that is both a trigger and
+  part of the filename is that entry's identifier — `tls`, `mcp`, `platformio` — and one of them is
+  enough evidence alone.
+- **A whole Chinese word of two or more characters also counts two.** Bigrams make this uneven: a
+  two-character word is one bigram and counts one hit, a three-character word is two and counts two,
+  so `贡献者` recalled alone while `相机` did not — equally specific words treated differently. A
+  Chinese word can never become an identifier either, because filenames are ASCII. A single Chinese
+  character is excluded, because those are exactly the fragments bigrams produce from sentences.
+- **The cap is two.** `tls` appears in the trigger, the name, the title and the body; counting every
+  field would let one common word clear any floor.
+
+Note what these rules require of the vocabulary: a trigger that can reach the floor alone must be
+specific enough to deserve it. Granting Chinese words their second hit immediately exposed seven
+single-word triggers (`重启`, `路径`, `下载`, `描述`, `清单`, `表格`, `计数`) that were too broad to
+stand alone — each recalled an unrelated entry from ordinary talk. Every one became a phrase. The
+matching rules and the vocabulary have to be tuned together; neither is correct on its own.
 - **Threshold:** at least `minRecallHits` distinct tokens (default 2) and a weighted score of at
   least `minRecallScore` (default 4). Two independent conditions, because a single high-weight token
   should not be enough and a pile of body hits should not be either.

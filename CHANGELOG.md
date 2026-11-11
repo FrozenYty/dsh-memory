@@ -7,6 +7,40 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-11-11
+
+### Fixed
+
+- **Mixed script without a separator recalled nothing.** `tokenize` split on non-word characters,
+  so `mcp挂了` stayed one token, was classified as CJK, and was shredded into bigrams — `mcp`
+  disappeared from the query entirely, and `platformio编译` became ten junk fragments. Typing mixed
+  script without spaces is the normal case for a Chinese user; Latin and CJK runs are now extracted
+  separately, so `mcp挂了` and `mcp 挂了` tokenise identically.
+
+### Changed
+
+- A single-word trigger that is also part of the entry's filename now counts as two hits. Such a word
+  is the entry's identifier (`tls`, `mcp`, `platformio`) and one is enough on its own, which is what
+  makes `tls 握手失败` recall without lowering the floor for ordinary words.
+- A trigger that is a whole Chinese word of two or more characters also counts two. Bigram splitting
+  gave a two-character word one hit and a three-character word two, so `贡献者` recalled alone while
+  `相机` did not; a Chinese word can never become an identifier either, because filenames are ASCII.
+  Vague follow-ups went from 7/15 to 15/15.
+
+### Added
+
+- Two recall-quality suites in the test run: a false-positive budget over 15 off-topic queries that
+  share vocabulary with the fixture notebook, and glued mixed-script recall. Recall improvements are
+  paid for against the first suite.
+
+### Notes
+
+- Granting Chinese words their second hit exposed seven single-word triggers that were too broad to
+  stand alone (`重启`, `路径`, `下载`, `描述`, `清单`, `表格`, `计数`); at first it took the false-positive
+  rate from 2.4% to 22%. Each became a phrase, returning it to 2.4% while keeping the vague
+  follow-ups. Measured on a real 18-entry notebook: 18/18 entries reachable, 15/15 vague follow-ups,
+  1/41 false positives.
+
 ## [0.7.1] — 2026-11-11
 
 ### Fixed
@@ -134,7 +168,8 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory-notebook/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/FrozenYty/dsh-memory-notebook/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.8.0
 [0.7.1]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.7.1
 [0.7.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.7.0
 [0.6.0]: https://github.com/FrozenYty/dsh-memory-notebook/releases/tag/v0.6.0

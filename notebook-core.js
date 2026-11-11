@@ -213,19 +213,26 @@ export function buildIndex(entries, config) {
 // matching
 // ---------------------------------------------------------------------------
 
-/** Latin words plus CJK bigrams — the cheap standard for mixed text. */
+/**
+ * Latin words plus CJK bigrams — the standard cheap approach for mixed text.
+ *
+ * The two scripts are extracted separately rather than split on punctuation, because a CJK run
+ * adjacent to a Latin run has no separator: splitting on non-word characters left `mcp挂了` as one
+ * token, which was then treated as CJK and shredded into bigrams (`mc`, `cp`, `p挂`, `挂了`) — the
+ * word `mcp` disappeared entirely. Mixed script without spaces is the normal way a Chinese user
+ * types, so `platformio编译` has to yield `platformio` and `编译`.
+ */
 export function tokenize(text) {
   const out = new Set()
-  for (const raw of String(text).toLowerCase().split(/[^a-z0-9\u3400-\u9fff]+/)) {
-    if (raw.length === 0) continue
-    if (CJK_CHAR.test(raw)) {
-      if (raw.length <= 2) {
-        out.add(raw)
+  for (const run of String(text).toLowerCase().match(/[a-z0-9]+|[\u3400-\u9fff]+/g) ?? []) {
+    if (CJK_CHAR.test(run)) {
+      if (run.length <= 2) {
+        out.add(run)
       } else {
-        for (let i = 0; i + 1 < raw.length; i++) out.add(raw.slice(i, i + 2))
+        for (let i = 0; i + 1 < run.length; i++) out.add(run.slice(i, i + 2))
       }
-    } else if (raw.length > 1) {
-      out.add(raw)
+    } else if (run.length > 1) {
+      out.add(run)
     }
   }
   return out
@@ -249,11 +256,37 @@ function tokenMatches(tokens, token) {
 }
 
 /**
- * A trigger is a phrase from the author's own vocabulary. It counts only when **every**
- * word of the phrase is present in the query, so a generic word such as "denied" cannot
- * carry the whole phrase "dotnet pipe denied" into an unrelated message. Phrase weight is
- * higher than any single field because a phrase is the most specific signal available.
- * Name 4, title 3, body 1; each query token contributes once, at its strongest match.
+ * A phrase that is a Chinese word of two or more characters is a complete word, not a fragment.
+ *
+ * Bigrams make this uneven: a two-character word is one bigram and so counts one hit, while a
+ * three-character word is two bigrams and counts two — `贡献者` recalled alone but `相机` did not,
+ * though both are equally specific. A Chinese word also can never become an identifier, because
+ * filenames are kebab-case ASCII, so it can never earn the identifier's second hit.
+ *
+ * The fix grants the second hit to any trigger that is wholly Chinese and at least two characters,
+ * which is what makes `相机那次` and `证书的问题` recall. A single Chinese character is excluded on
+ * purpose — those are exactly the fragments bigrams produce from ordinary sentences.
+ */
+function isWholeChineseWord(phrase) {
+  const text = String(phrase).trim()
+  if (text.length < 2) return false
+  return /^[\u3400-\u9fff]+$/.test(text)
+}
+
+/**
+ * A trigger is a phrase from the author's own vocabulary. It counts only when **every** word of
+ * the phrase is present in the query, so a generic word such as "denied" cannot carry the whole
+ * phrase "dotnet pipe denied" into an unrelated message.
+ *
+ * Three sources of evidence, and the hit count is what separates a real match from a mention:
+ *  - a whole multi-word phrase counts one hit per word, so `mcp 挂了` clears the two-hit floor;
+ *  - a single-word trigger that is **also part of the entry's name** counts two, because a word
+ *    that names the entry and triggers it is that entry's identifier (`tls`, `mcp`, `platformio`);
+ *  - a trigger that is a whole Chinese word of two or more characters counts two, because bigram
+ *    splitting gives a two-character word only one token while a three-character word gets two.
+ *
+ * The cap matters: `tls` appears in the trigger, the name, the title and the body. Counting all
+ * four would let one common word clear any floor.
  */
 export function scoreEntry(entry, queryTokens) {
   const nameTokens = tokenize(entry.key.replace(/-/g, ' '))
@@ -276,24 +309,31 @@ export function scoreEntry(entry, queryTokens) {
       }
     }
     if (!whole) continue
-    score += phraseTokens.size === 1 ? 5 : 7
-    // A whole phrase is more evidence than a single word, and it counts as such: three matched
-    // words clear the two-hit floor on their own, which is what lets a short message like
-    // "mcp 挂了" recall one entry without lowering the floor for ordinary words.
-    hits += phraseTokens.size
+    if (phraseTokens.size === 1) {
+      const [token] = phraseTokens
+      const identifies = tokenMatches(nameTokens, token)
+      const chineseWord = isWholeChineseWord(phrase)
+      score += 5
+      hits += identifies || chineseWord ? 2 : 1
+    } else {
+      score += 7
+      hits += phraseTokens.size
+    }
     for (const token of phraseTokens) covered.add(token)
   }
 
   for (const token of queryTokens) {
     if (STOPWORDS.has(token) || covered.has(token)) continue
-    let weight = 0
-    if (tokenMatches(nameTokens, token)) weight = 4
-    else if (tokenMatches(titleTokens, token)) weight = 3
-    // Body matching stays exact: it is the largest set, and prefix scanning it would cost more
-    // than the recall it buys.
-    else if (bodyTokens.has(token)) weight = 1
-    if (weight > 0) {
-      score += weight
+    if (tokenMatches(nameTokens, token)) {
+      score += 4
+      hits += 1
+    } else if (tokenMatches(titleTokens, token)) {
+      score += 3
+      hits += 1
+    } else if (bodyTokens.has(token)) {
+      // Body matching stays exact: it is the largest set, and prefix scanning it would cost more
+      // than the recall it buys.
+      score += 1
       hits += 1
     }
   }

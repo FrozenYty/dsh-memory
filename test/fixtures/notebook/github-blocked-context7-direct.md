@@ -1,5 +1,5 @@
 ---
-triggers: github, 代理, proxy, 超时, 连不上, 墙, 443
+triggers: github, 代理, proxy, 超时, 连不上, 墙, 443, 端口
 ---
 
 # GitHub is blocked; Context7 is not — 2026-11-02
