@@ -335,6 +335,38 @@ check(
   buildIndex(loadNotebook({ ...config, workspaceDir: keepDir }, '.'), config).includes('— A new summary'),
 )
 
+// Evidence has a length limit, and going over it is reported rather than silent. The limit used to be
+// 300, which is under what "a command plus its result" needs, so the one field whose job is to prove a
+// claim was the one being cut — and two entries in the author's own notebook ended mid-word while the
+// write still reported success.
+const evDir = mkdtempSync(join(tmpdir(), 'mn-evidence-'))
+const evTools = []
+pluginApply(
+  {
+    systemPrompt: { section: () => {}, context: () => {} },
+    tools: { register: (tool) => { evTools.push(tool); return () => {} } },
+    on: () => () => {},
+    get: () => undefined,
+  },
+  { workspaceDir: '.' },
+)
+const evExec = { agent: { session: { header: { cwd: evDir } } } }
+const writeTool = evTools.find((tool) => tool.name === 'memory_write')
+const shortWrite = await writeTool.execute(
+  { name: 'short-evidence', title: 't', evidence: 'node probe.mjs -> 42 results' },
+  evExec,
+)
+check('evidence under the limit is not reported as truncated', shortWrite.evidenceTruncated === false)
+const overLimit = 'x'.repeat(1500)
+const longWrite = await writeTool.execute({ name: 'long-evidence', title: 't', evidence: overLimit }, evExec)
+check('evidence over the limit is reported as truncated', longWrite.evidenceTruncated === true)
+const storedLong = scanDir(evDir).find((entry) => entry.key === 'long-evidence')
+check(
+  'the stored evidence is cut to exactly the limit',
+  storedLong !== undefined && storedLong.body.includes(`Evidence: \`${'x'.repeat(1000)}\``) && !storedLong.body.includes('x'.repeat(1001)),
+  storedLong === undefined ? 'entry missing' : `body ${storedLong.body.length} chars`,
+)
+
 // ---------------------------------------------------------------------------
 console.log('\n[7] evidence hygiene')
 // ---------------------------------------------------------------------------

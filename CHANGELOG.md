@@ -7,6 +7,40 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.22.0] — 2026-11-13
+
+### Fixed
+
+**`memory_write` was cutting the evidence line to 300 characters and saying nothing.** That is under what
+*"a command plus its result"* needs, so the one field whose entire job is to prove a claim was the one
+being shortened — and two entries in the author's own notebook ended mid-word while the write still
+reported success:
+
+```
+... dsh-bing-search v1.1.7 "No API key needed, uses cn.bin     ← cut here
+... zero english-dominant. Sca                                 ← cut here
+```
+
+They read like careless writing. They were not; the plugin cut them.
+
+### Changed
+
+- **The limit is now 1000 characters** (`EVIDENCE_LIMIT`), which fits a command and its output.
+- **Exceeding it is reported, not hidden.** `memory_write` returns `evidenceTruncated`, and both the tool
+  description and the rendered text say when a stored line no longer proves the whole claim. A truncated
+  evidence line still *reads* as complete, which is why silence was the worse failure.
+
+### Notes
+
+- **This is the mechanism behind "evidence that cannot self-prove".** A rule saying *"write the command
+  and its result"* is unenforceable while the writer can exceed a hidden cap and not find out. The rule
+  and the cap had to change together.
+- **The two damaged entries were repaired** by dropping a redundant folder-pointer `Evidence:` line that
+  each of them also carried — they had always had a second, complete line, so nothing was lost.
+- **Three tests added** (187 total) and **two mutations** (75 total, all killed): the limit dropping back
+  to 300, and truncation no longer being reported. Reverting the limit to 300 makes the suite fail, which
+  is the only proof that the test is not decoration.
+
 ## [0.21.2] — 2026-11-13
 
 ### Changed
