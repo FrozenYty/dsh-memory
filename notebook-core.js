@@ -55,9 +55,16 @@ export function expandHome(p) {
 
 export function resolveDirs(config, cwd) {
   const dirs = []
-  if (config.workspaceDir && cwd) dirs.push(resolve(cwd, config.workspaceDir))
+  // The same directory reached through both settings would be scanned twice: `memory_usage` reads each
+  // directory's log, so its counts would double, and the header would name the notebook twice. Compared
+  // resolved, because `~/notes` and the absolute path to `/notes` are the same directory.
+  const add = (path) => {
+    const normalized = resolve(path)
+    if (!dirs.some((existing) => resolve(existing) === normalized)) dirs.push(path)
+  }
+  if (config.workspaceDir && cwd) add(resolve(cwd, config.workspaceDir))
   const machine = expandHome(config.machineDir)
-  if (machine) dirs.push(machine)
+  if (machine) add(machine)
   return dirs
 }
 
@@ -783,7 +790,7 @@ export function recordUsage(dir, entryKey) {
     // joins the new record to the last line, and a line holding two objects parses as neither — so one
     // bad write makes the whole log read as empty, not just the record that caused it.
     if (existsSync(path) && !readFileSync(path, 'utf8').endsWith('\n')) appendFileSync(path, '\n', 'utf8')
-    appendFileSync(path, `${JSON.stringify({ d: new Date().toISOString().slice(0, 10), e: entryKey })}\n`, 'utf8')
+    appendFileSync(path, `${JSON.stringify({ d: localToday(), e: entryKey })}\n`, 'utf8')
     return true
   } catch {
     return false
@@ -859,23 +866,51 @@ export function normalizeKey(raw) {
   return key
 }
 
+/**
+ * Today as the user's calendar sees it, not UTC.
+ *
+ * `toISOString().slice(0, 10)` is the UTC date, which is yesterday for anyone whose evening is past
+ * midnight UTC — a write at 07:00 in +08 lands on the previous day. Dates here are read by a human
+ * deciding whether an entry is stale, so they have to match the human's calendar.
+ */
+function localToday() {
+  const now = new Date()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${now.getFullYear()}-${month}-${day}`
+}
+
 export function writeEntryFile(dir, fields) {
   mkdirSync(dir, { recursive: true })
   const path = join(dir, fields.key + '.md')
   const created = !existsSync(path)
-  const today = new Date().toISOString().slice(0, 10)
+  const today = localToday()
 
   // Keep the existing triggers when the caller does not supply new ones. An update that omits them
   // would otherwise silently erase the entry's recall vocabulary — the entry stays, but stops being
   // findable, and nothing reports it.
+  //
+  // `summary` gets the same treatment, and for the same reason: it is what the index shows, so an
+  // update that dropped it would make the entry vanish from the index into a bare filename while the
+  // body survived. Any other frontmatter key the author added is carried through too — this function
+  // owns `status`, `updated`, `triggers` and `summary`, and nothing else.
   let triggers = String(fields.triggers ?? '').trim()
-  if (!created && triggers.length === 0) {
+  let summary = String(fields.summary ?? '').trim()
+  const carried = {}
+  if (!created) {
     const { meta } = splitFrontmatter(readFileSync(path, 'utf8'))
-    triggers = String(meta.triggers ?? '').trim()
+    if (triggers.length === 0) triggers = String(meta.triggers ?? '').trim()
+    if (summary.length === 0) summary = String(meta.summary ?? '').trim()
+    for (const [key, value] of Object.entries(meta)) {
+      if (['status', 'updated', 'triggers', 'summary'].includes(key)) continue
+      carried[key] = value
+    }
   }
 
   const lines = ['---', `status: ${fields.status}`, `updated: ${today}`]
   if (triggers.length > 0) lines.push(`triggers: ${triggers}`)
+  if (summary.length > 0) lines.push(`summary: ${summary}`)
+  for (const [key, value] of Object.entries(carried)) lines.push(`${key}: ${value}`)
   lines.push('---', '')
   lines.push(`# ${fields.title}`, '')
   if (fields.body.trim().length > 0) lines.push(fields.body.trim(), '')
@@ -895,7 +930,7 @@ export function setStatus(dir, key, status) {
   meta.status = status
   // Reviewing an entry is the moment its evidence was last confirmed, so the timestamp moves.
   // Age is what the audit reports on; a status change that did not move it would mask staleness.
-  meta.updated = new Date().toISOString().slice(0, 10)
+  meta.updated = localToday()
   const rebuilt = ['---', `status: ${status}`]
   for (const [k, v] of Object.entries(meta)) {
     if (k === 'status') continue

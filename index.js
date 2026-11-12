@@ -199,16 +199,19 @@ export function apply(ctx, config) {
 
   // --- seed the bundled policy into a notebook that has none ------------------
   // Once per directory per process: an existing policy is never overwritten, so a user edit
-  // survives an upgrade, and a read-only notebook is silently left alone.
+  // survives an upgrade, and a read-only notebook is silently left alone. Every configured
+  // directory, not only the first — a machine-wide tier without its policy is a notebook whose
+  // rules nothing states.
   const seededDirs = new Set()
   const seedPolicyOnce = (cwd) => {
-    const dir = resolveDirs(cfg, cwd)[0]
-    if (dir === undefined || seededDirs.has(dir)) return
-    seededDirs.add(dir)
-    try {
-      ensurePolicyEntry(dir, POLICY_TEMPLATE)
-    } catch {
-      /* a read-only notebook is not an error */
+    for (const dir of resolveDirs(cfg, cwd)) {
+      if (seededDirs.has(dir)) continue
+      seededDirs.add(dir)
+      try {
+        ensurePolicyEntry(dir, POLICY_TEMPLATE)
+      } catch {
+        /* a read-only notebook is not an error */
+      }
     }
   }
 
@@ -218,13 +221,14 @@ export function apply(ctx, config) {
   // because the injected index never names it. Once is enough: every plugin write keeps it in step.
   const syncedDirs = new Set()
   const syncIndexOnce = (cwd) => {
-    const dir = resolveDirs(cfg, cwd)[0]
-    if (dir === undefined || syncedDirs.has(dir)) return
-    syncedDirs.add(dir)
-    try {
-      syncIndexFile(dir)
-    } catch {
-      /* a read-only notebook is not an error */
+    for (const dir of resolveDirs(cfg, cwd)) {
+      if (syncedDirs.has(dir)) continue
+      syncedDirs.add(dir)
+      try {
+        syncIndexFile(dir)
+      } catch {
+        /* a read-only notebook is not an error */
+      }
     }
   }
 
@@ -401,9 +405,10 @@ export function apply(ctx, config) {
         }
         // A read is the honest usage signal once recall is off by default: the model chose this entry
         // because it needed it, where an automatic publication only means a matcher fired. Swallowed on
-        // failure — telemetry is never worth breaking a read over.
-        const dir = resolveDirs(cfg, exec?.agent?.session?.header?.cwd)[0]
-        if (dir !== undefined) recordUsage(dir, entry.key)
+        // failure — telemetry is never worth breaking a read over. Recorded against the directory the
+        // entry came from: a machine-wide entry counted in the workspace log would show as never read
+        // in the log its own directory is judged by.
+        recordUsage(entry.dir, entry.key)
         return { name: entry.key, status: entry.status, content: entry.body.trim() }
       },
     }),
@@ -429,6 +434,11 @@ export function apply(ctx, config) {
           triggers: {
             type: 'string',
             description: 'Comma-separated recall words, including Chinese synonyms for an English body',
+          },
+          summary: {
+            type: 'string',
+            description:
+              'Optional one-line note shown in the index after the filename. Falls back to the title when omitted; an update preserves the existing summary.',
           },
           status: {
             type: 'string',
@@ -494,6 +504,7 @@ export function apply(ctx, config) {
           title,
           status,
           triggers: String(args.triggers ?? ''),
+          summary: String(args.summary ?? ''),
           body: String(args.body ?? '').slice(0, 4000),
           evidence: evidence.slice(0, 300),
         })
@@ -580,8 +591,11 @@ export function apply(ctx, config) {
         },
       },
       async execute(_args, exec) {
-        const dir = resolveDirs(cfg, exec?.agent?.session?.header?.cwd)[0]
-        return usageReport(entriesFor(exec), dir === undefined ? [] : readUsage(dir))
+        // Every configured directory's log. A read is recorded against the directory its entry came
+        // from, so reporting only the first directory's log would show machine-wide entries as never
+        // used no matter how often they are read.
+        const rows = resolveDirs(cfg, exec?.agent?.session?.header?.cwd).flatMap((dir) => readUsage(dir))
+        return usageReport(entriesFor(exec), rows)
       },
     }),
   )

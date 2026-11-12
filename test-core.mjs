@@ -19,12 +19,14 @@ import {
   buildIndexDetail,
   diagnoseNotebook,
   ensurePolicyEntry,
+  expandHome,
   indexDrift,
   indexResidency,
   loadNotebook,
   normalizeKey,
   pickHits,
   readIndexFiles,
+  resolveDirs,
   readUsage,
   recordUsage,
   renderRecall,
@@ -299,6 +301,38 @@ check(
   'an update with triggers replaces them',
   scanDir(keepDir)[0].triggers.join(',') === 'gamma',
   scanDir(keepDir)[0].triggers.join(','),
+)
+
+// An update rewrites the frontmatter, so every key this function does not know about is a chance to
+// lose data. `summary` was lost exactly this way: it is what the index shows, so dropping it turned an
+// entry back into a bare filename while the body survived and nothing reported the loss.
+const keptPath = join(keepDir, 'keep-triggers.md')
+writeFileSync(
+  keptPath,
+  '---\nstatus: candidate\nsummary: A summary that must survive\ncustom: a key this plugin does not own\ntriggers: gamma\n---\n\n# Kept\n\nEvidence: n/a\n',
+  'utf8',
+)
+writeEntryFile(keepDir, { key: 'keep-triggers', title: 'Kept', status: 'candidate', body: 'body v2', evidence: 'e2' })
+const keptRaw = readFileSync(keptPath, 'utf8')
+check('an update keeps an existing summary', keptRaw.includes('summary: A summary that must survive'), keptRaw.split('\n').slice(0, 7).join(' / '))
+check('an update keeps a frontmatter key it does not own', keptRaw.includes('custom: a key this plugin does not own'))
+writeEntryFile(keepDir, {
+  key: 'keep-triggers',
+  title: 'Kept',
+  status: 'candidate',
+  body: 'body v3',
+  evidence: 'e3',
+  summary: 'A new summary',
+})
+const replacedRaw = readFileSync(keptPath, 'utf8')
+check(
+  'an update can set a summary, and it replaces the old one',
+  replacedRaw.includes('summary: A new summary') && !replacedRaw.includes('A summary that must survive'),
+  replacedRaw.split('\n').slice(0, 7).join(' / '),
+)
+check(
+  'the summary reaches the index',
+  buildIndex(loadNotebook({ ...config, workspaceDir: keepDir }, '.'), config).includes('— A new summary'),
 )
 
 // ---------------------------------------------------------------------------
@@ -846,6 +880,29 @@ check(
     .then(() => false)
     .catch(() => readUsage(readTraceDir).length === 1),
 )
+
+// ---------------------------------------------------------------------------
+console.log('\n[21] path resolution, and the same directory named twice')
+// ---------------------------------------------------------------------------
+// Found by auditing every place that takes a directory: several took only the first, so a configured
+// machine-wide tier was never seeded, never index-synced, and its reads were logged against the
+// workspace. And when both settings name the same directory, memory_usage read that log twice and
+// doubled every count.
+const resolvedBoth = resolveDirs({ workspaceDir: '.agents/memory', machineDir: '~/tier' }, '/cwd')
+check('two configured directories both appear', resolvedBoth.length === 2, JSON.stringify(resolvedBoth))
+const resolvedSame = resolveDirs({ workspaceDir: '/abs/m', machineDir: '/abs/m' }, '/cwd')
+check('the same directory named twice appears once', resolvedSame.length === 1, JSON.stringify(resolvedSame))
+check(
+  'the workspace tier comes first, so it wins a name collision',
+  resolveDirs({ workspaceDir: 'ws', machineDir: '~/m' }, '/cwd')[0].includes('ws'),
+  JSON.stringify(resolveDirs({ workspaceDir: 'ws', machineDir: '~/m' }, '/cwd')),
+)
+check('nothing configured yields nothing', resolveDirs({ workspaceDir: '', machineDir: '' }, '/cwd').length === 0)
+check('a workspace tier needs a cwd', resolveDirs({ workspaceDir: '.agents/memory', machineDir: '' }, undefined).length === 0)
+check('a bare tilde expands to the home directory', expandHome('~').length > 1 && !expandHome('~').startsWith('~'))
+check('a tilde path expands and joins', expandHome('~/notes').endsWith(join('', 'notes')))
+check('an absolute path is left alone', expandHome('/abs/path') === '/abs/path')
+check('an empty setting expands to an empty string', expandHome('') === '')
 
 for (const dir of [emptyDir, writeDir, readOnlyDir, readTraceDir, writtenDir, seedRoot, driftDir, keepDir, derived]) {
   try {
