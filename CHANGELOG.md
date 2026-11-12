@@ -7,6 +7,25 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.18.2] — 2026-11-12
+
+### Added
+
+- **`scripts/mutation-scan.mjs`** — breaks one thing at a time and reports whether the suite notices.
+  **39 mutations, 39 killed, 0 survived.** The point is not the number: it is that "the tests pass" and
+  "the tests would fail if this broke" are different claims, and only the second one is worth anything.
+  A survivor is a question, not a verdict — the scan cannot distinguish an uncovered line from an
+  equivalent change.
+
+### Notes
+
+- **39 mutations over 900 lines is a sample, not a proof.** It says every construct it touched is
+  defended. It does not say the untested remainder is. The honest reading is *"nothing I broke went
+  unnoticed"*, not *"nothing is broken"*.
+- **The scan restores both sources after every mutation and re-verifies the restore at the end**, then
+  the caller compares hashes against a backup. A tool that edits your source and can leave it broken on
+  a crash is worse than no tool; this one has been run eleven times today without a scratch.
+
 ## [0.18.1] — 2026-11-12
 
 ### Added
@@ -625,7 +644,8 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/20acd20...HEAD
+[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/dd0dad9...HEAD
+[0.18.2]: https://github.com/FrozenYty/dsh-memory/commit/dd0dad9
 [0.18.1]: https://github.com/FrozenYty/dsh-memory/commit/20acd20
 [0.18.0]: https://github.com/FrozenYty/dsh-memory/commit/32f2ad8
 [0.17.1]: https://github.com/FrozenYty/dsh-memory/commit/d7baca1
