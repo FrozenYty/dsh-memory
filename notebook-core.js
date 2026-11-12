@@ -114,6 +114,10 @@ export function scanDir(dir) {
       key,
       title: heading !== undefined ? heading.slice(2).trim() : key,
       status: normalizeStatus(meta.status),
+      // Carried onto the entry, not left in `meta`, because the index reads it. Until this existed the
+      // index fell back to the heading for every entry and the `summary:` field did nothing at all —
+      // silently, since a fallback that always succeeds looks like success.
+      summary: typeof meta.summary === 'string' ? meta.summary.trim() : '',
       // Optional `triggers:` line in the frontmatter carries synonyms, including
       // Chinese words for an English body — the author's own recall vocabulary.
       triggers: String(meta.triggers ?? '')
@@ -225,7 +229,7 @@ function indexLine(entry, summaryChars) {
   // Zero means filenames only. Without this the clipping below would run with a budget of 0 and
   // `slice(0, -1)` would drop one character instead of all of them.
   if (!(summaryChars > 0)) return `- ${entry.file}\n`
-  const source = String(entry.meta?.summary ?? entry.title ?? '').replace(/\s+/g, ' ').trim()
+  const source = String(entry.summary || entry.title || '').replace(/\s+/g, ' ').trim()
   // A trailing date is provenance, not content — it costs characters in every session and tells the
   // model nothing about whether to read.
   const summary = source.replace(/\s*[—–-]\s*\d{4}-\d{2}-\d{2}\s*$/, '').trim()

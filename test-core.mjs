@@ -111,6 +111,21 @@ check('a summary is clipped to the configured length', (() => {
   return summary.length > 0 && summary.length <= 21
 })(), buildIndex(entries.slice(0, 1), { ...config, indexSummaryChars: 20 }).match(/\.md — (.+)/)?.[1])
 check('zero means filenames only', !buildIndex(entries, { ...config, indexSummaryChars: 0 }).includes(' — '))
+// A `summary:` in the frontmatter wins over the heading. Without a test for this the field did nothing
+// at all: the entry never carried it, every line fell back to the heading, and a fallback that always
+// succeeds looks exactly like success.
+const summaryProbe = mkdtempSync(join(tmpdir(), 'mn-summary-'))
+writeFileSync(
+  join(summaryProbe, 'with-summary.md'),
+  '---\nstatus: candidate\nsummary: The summary field wins\n---\n\n# A heading that must not appear\n\nEvidence: n/a\n',
+  'utf8',
+)
+const probeIndex = buildIndex(loadNotebook({ ...config, workspaceDir: summaryProbe }, '.'), config)
+check(
+  'a summary in the frontmatter wins over the heading',
+  probeIndex.includes('The summary field wins') && !probeIndex.includes('A heading that must not appear'),
+  probeIndex.split('\n').find((l) => l.startsWith('- ')) ?? '(no line)',
+)
 check('index respects the char budget', index.length <= config.indexBudgetChars, `${index.length} chars`)
 check('the summary line costs more than a bare name', index.length > 1000, `${index.length} chars`)
 check('empty notebook injects nothing', buildIndex([], config) === '')
