@@ -904,7 +904,77 @@ check('a tilde path expands and joins', expandHome('~/notes').endsWith(join('', 
 check('an absolute path is left alone', expandHome('/abs/path') === '/abs/path')
 check('an empty setting expands to an empty string', expandHome('') === '')
 
-for (const dir of [emptyDir, writeDir, readOnlyDir, readTraceDir, writtenDir, seedRoot, driftDir, keepDir, derived]) {
+// ---------------------------------------------------------------------------
+console.log('\n[22] every configured directory is seeded and index-synced, and dates are local')
+// ---------------------------------------------------------------------------
+// Mutation testing found these two had no protection: reverting the fixes left every test passing.
+// The write path's date and the multi-directory wiring are both invisible to a suite that only ever
+// configures one directory and only ever runs in whatever timezone CI happens to use.
+const multiWs = mkdtempSync(join(tmpdir(), 'mn-multi-ws-'))
+const multiMachine = mkdtempSync(join(tmpdir(), 'mn-multi-machine-'))
+writeFileSync(join(multiWs, 'ws-entry.md'), '# Workspace entry\n\nEvidence: n/a\n', 'utf8')
+writeFileSync(join(multiMachine, 'machine-entry.md'), '# Machine entry\n\nEvidence: n/a\n', 'utf8')
+
+let multiSection
+pluginApply(
+  {
+    systemPrompt: { section: (section) => { multiSection = section }, context: () => {} },
+    tools: { register: () => () => {} },
+    on: () => () => {},
+    get: () => undefined,
+  },
+  {
+    showIndex: true,
+    workspaceDir: multiWs,
+    machineDir: multiMachine,
+    indexBudgetChars: config.indexBudgetChars,
+    indexSummaryChars: config.indexSummaryChars,
+  },
+)
+// Rendering the section is what seeds and syncs; the callback is the wiring under test.
+const multiText = multiSection.text({ agent: { session: { header: { cwd: '/' } } } })
+check('the workspace tier is seeded with the policy', existsSync(join(multiWs, 'notebook-policy.md')))
+check('the machine tier is seeded too', existsSync(join(multiMachine, 'notebook-policy.md')))
+check('the workspace tier gets its index', existsSync(join(multiWs, 'INDEX.md')))
+check('the machine tier gets its index too', existsSync(join(multiMachine, 'INDEX.md')))
+check(
+  'the rendered index names entries from both tiers',
+  multiText.includes('ws-entry') && multiText.includes('machine-entry'),
+  multiText.split('\n').filter((l) => l.startsWith('- ')).join(' | '),
+)
+
+// The date must be the author's calendar day. A suite running in UTC cannot tell the difference, which
+// is exactly how three toISOString() call sites survived: the bug only bites east or west of Greenwich.
+const dateDir = mkdtempSync(join(tmpdir(), 'mn-date-'))
+writeEntryFile(dateDir, { key: 'dated', title: 'Dated', status: 'candidate', body: 'b', evidence: 'e' })
+const now = new Date()
+const localDay = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+const datedRaw = readFileSync(join(dateDir, 'dated.md'), 'utf8')
+check('the date written is the local calendar day', datedRaw.includes(`updated: ${localDay}`), datedRaw.split('\n')[2])
+check(
+  'the usage log records the local calendar day too',
+  (() => {
+    recordUsage(dateDir, 'dated')
+    return readUsage(dateDir)[0]?.day === localDay
+  })(),
+  JSON.stringify(readUsage(dateDir)[0]),
+)
+rmSync(dateDir, { recursive: true, force: true })
+
+// The runtime assertion above can only catch a UTC regression between 00:00 and 07:59 local time — for
+// the other sixteen hours the two calendars agree and it passes either way. Mutation testing proved
+// that: reverting the fix left it green. This is the version that cannot be dodged by the clock.
+// Comments are stripped first, because the fix's own explanation names the function it replaced.
+const coreSource = readFileSync(new URL('./notebook-core.js', import.meta.url), 'utf8')
+  .replace(/\/\*[\s\S]*?\*\//g, '')
+  .replace(/\/\/.*$/gm, '')
+check(
+  'no date in the source comes from toISOString',
+  !coreSource.includes('toISOString'),
+  'notebook-core.js still formats a date with toISOString, which is UTC',
+)
+
+for (const dir of [emptyDir, writeDir, readOnlyDir, readTraceDir, writtenDir, seedRoot, driftDir, keepDir, derived, multiWs, multiMachine]) {
   try {
     rmSync(dir, { recursive: true, force: true })
   } catch {

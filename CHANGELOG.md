@@ -7,6 +7,26 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.18.1] — 2026-11-12
+
+### Added
+
+- **Mutation-tested coverage for the last two fixes.** Reverting the 0.18.0 code to its pre-fix state
+  left the suite green for two of the five defects: **the UTC date and the multi-directory wiring** had
+  no test that could fail. Both are now covered — the machine tier being seeded and index-synced is
+  asserted through the section callback that actually does it, and the date has a **static** guard
+  because a runtime assertion can only catch a UTC regression between 00:00 and 07:59 local time. For
+  the other sixteen hours the two calendars agree and it passes either way; that is exactly how three
+  `toISOString()` call sites survived a suite that looked comprehensive.
+- **The static guard caught a fourth `toISOString` reference immediately** — in a comment. Comment
+  text is stripped before the check, because the fix's own explanation names the function it replaced.
+
+### Notes
+
+- **Reverting the fix and re-running the suite is now how a fix gets called done.** A test that cannot
+  fail is not coverage; it is the appearance of it. Eight tests now fail on the pre-0.18.0 code, one
+  per defect.
+
 ## [0.18.0] — 2026-11-12
 
 ### Fixed
