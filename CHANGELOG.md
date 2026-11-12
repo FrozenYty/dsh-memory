@@ -7,6 +7,46 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.21.0] — 2026-11-12
+
+### Added
+
+**The documentation now meets the standard the sibling project set, and a rule enforces it rather than
+asking.**
+
+- **`docs/INDEX-zh.md`, `docs/architecture-zh.md`** — the Chinese half of the two documents that had
+  only an English one.
+- **`docs/glossary-en-zh.md`** — every term this repository uses in a specific way, with the word it is
+  **not** a synonym for. That column is the point: most of the confusion here came from two words
+  sounding alike — "the injected index" and `INDEX.md`, "recall" for two mechanisms now separate.
+- **`docs/test-plan-en/zh.md`** — the five layers, what each holds, and a section on **what none of it
+  proves**. The worked example from today is in it: 39 mutations reported "39 killed" while two of five
+  fixes had no protection.
+- **`docs/traceability-en/zh.md`** — every accepted ADR and what holds it in place, with **two
+  deliberate gaps named**: decisions that are conventions rather than mechanisms, and guarantees with a
+  known hole. Adding a row to one of those two sections requires writing a sentence about why nothing
+  enforces it — that sentence is what stops "we decided this" being mistaken for "this happens".
+
+### Changed
+
+- **`docs/INDEX-en.md` rewritten** to the sibling project's shape: an authoritative-language statement,
+  an owner and a revisit trigger, a "which one wins" section that now includes the `-en` / `-zh`
+  tie-break, and the coupling table extended with the pairing rule.
+- **`check-docs` gained rule (i): every document under `docs/` is an `-en` / `-zh` pair.** This is the
+  difference between the convention and the guarantee — the convention existed in prose and had already
+  drifted. Verified the way a test is verified: **removing `test-plan-zh.md` makes the rule fail**, and
+  restoring it makes it pass.
+
+### Notes
+
+- **`CHANGELOG.md` and `docs/adr/` remain single-language, deliberately.** A changelog is appended to in
+  order and translating it means maintaining two histories; an ADR's reader is whoever implements next,
+  and that reader's language has nothing to do with the conversation that produced it. Both are stated
+  in `INDEX-en.md` §4 so the exception is a decision rather than an oversight.
+- **The pairing rule caught its own false positive immediately**: `glossary-en-zh.md` also ends in
+  `-zh.md`, so it was reported as an unpaired Chinese file. Excluded by suffix, and verified by its own
+  rule — it must carry a `| 中文 |` column.
+
 ## [0.20.0] — 2026-11-12
 
 ### Changed

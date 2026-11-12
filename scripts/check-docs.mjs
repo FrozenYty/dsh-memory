@@ -349,6 +349,56 @@ function checkReadmeIsEnglish() {
   };
 }
 
+// Every document under docs/ is an -en / -zh pair. This is the rule that turns "we keep both languages
+// in step" from a promise into something that can fail — and the reason it exists: the first version of
+// this convention was written in prose, only the English half of four documents existed, and nothing
+// noticed until someone asked.
+//
+// CHANGELOG.md and docs/adr/ are deliberately single-language (see docs/INDEX-en.md §4): a changelog is
+// appended to in order, and an ADR's reader is whoever implements next. The rule applies to docs/ pairs
+// and the README pair only.
+function checkDocPairs() {
+  const details = [];
+  const docsDir = path.join(repoRoot, 'docs');
+  if (!existsSync(docsDir)) return { ok: true, summary: 'no docs/ directory', details: [] };
+
+  const files = readdirSync(docsDir).filter((name) => name.endsWith('.md'));
+  const english = files.filter((name) => name.endsWith('-en.md'));
+  // `glossary-en-zh.md` also ends in `-zh.md`; it is bilingual in one file by design, so it is excluded
+  // from the pair check and verified by its own rule below.
+  const bilingual = files.filter((name) => name.endsWith('-en-zh.md'));
+  const chinese = new Set(files.filter((name) => name.endsWith('-zh.md') && !name.endsWith('-en-zh.md')));
+
+  for (const name of english) {
+    const counterpart = `${name.slice(0, -'-en.md'.length)}-zh.md`;
+    if (!chinese.has(counterpart)) details.push(`docs/${name} has no docs/${counterpart}`);
+  }
+  // Two columns, not two files - and the column heading is what proves it is the bilingual shape.
+  for (const name of bilingual) {
+    if (!readText(path.join(docsDir, name)).includes('| 中文 |')) {
+      details.push(`docs/${name} is bilingual in one file and must carry a 中文 column`);
+    }
+  }
+  // A -zh with no -en is the same defect from the other side.
+  for (const name of chinese) {
+    const counterpart = `${name.slice(0, -'-zh.md'.length)}-en.md`;
+    if (!files.includes(counterpart)) details.push(`docs/${name} has no English counterpart`);
+  }
+
+  // The READMEs are the other pair, and the one a reader meets first.
+  for (const [a, b] of [['README.md', 'README-zh.md']]) {
+    if (existsSync(path.join(repoRoot, a)) !== existsSync(path.join(repoRoot, b))) {
+      details.push(`${a} and ${b} must exist together`);
+    }
+  }
+
+  return {
+    ok: details.length === 0,
+    summary: `${english.length + 1} document pair(s) complete, ${bilingual.length} bilingual in one file`,
+    details,
+  };
+}
+
 function main() {
   const rules = [
     { label: 'a) ADR index', result: checkAdrIndex() },
@@ -359,6 +409,7 @@ function main() {
     { label: 'f) configuration is documented', result: checkConfigTable() },
     { label: 'g) policy copies agree', result: checkPolicyCopies() },
     { label: 'h) README.md is English', result: checkReadmeIsEnglish() },
+    { label: 'i) every document is a pair', result: checkDocPairs() },
   ];
 
   let passed = 0;
