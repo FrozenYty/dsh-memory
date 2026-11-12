@@ -7,6 +7,24 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.15.2] — 2026-11-12
+
+### Changed
+
+- **No more tags, and no releases.** This is a plugin one person and a friend use; nothing consumes a
+  version tag, and twenty-two of them accumulated from habit. The version stays in `package.json` because
+  the plugin page shows it and it identifies what is installed — but it is no longer published as a tag.
+- **Every version link in this file now points at a commit** rather than at
+  `releases/tag/…`, which would have 404'd the moment the tags went. The commit a version was cut from
+  never moves, so `## [0.15.1]` still opens something.
+
+### Notes
+
+- The 22 tags were deleted from local and remote. Their commits remain; nothing was rewritten, and
+  `git log` is unchanged. Only the bookmarks are gone.
+- GitHub Releases were never created at all — `list_releases` returns empty. A release page would have
+  duplicated what this file already records in more detail.
+
 ## [0.15.1] — 2026-11-11
 
 ### Changed
@@ -464,26 +482,26 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/v0.15.1...HEAD
-[0.15.1]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.15.1
-[0.15.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.15.0
-[0.14.1]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.14.1
-[0.14.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.14.0
-[0.13.3]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.13.3
-[0.13.2]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.13.2
-[0.13.1]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.13.1
-[0.13.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.13.0
-[0.12.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.12.0
-[0.11.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.11.0
-[0.10.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.10.0
-[0.9.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.9.0
-[0.8.1]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.8.1
-[0.8.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.8.0
-[0.7.1]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.7.1
-[0.7.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.7.0
-[0.6.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.6.0
-[0.5.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.5.0
-[0.4.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.4.0
-[0.3.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.3.0
-[0.2.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.2.0
-[0.1.0]: https://github.com/FrozenYty/dsh-memory/releases/tag/v0.1.0
+[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/149d357afdc114fd811471c11e87f20e8e95d3c5...HEAD
+[0.15.1]: https://github.com/FrozenYty/dsh-memory/commit/149d357afdc114fd811471c11e87f20e8e95d3c5
+[0.15.0]: https://github.com/FrozenYty/dsh-memory/commit/2e95a7ae61e0fb1967605124a5b937208852859d
+[0.14.1]: https://github.com/FrozenYty/dsh-memory/commit/5189f46c93d89299b02f9405114f06454ef95ef0
+[0.14.0]: https://github.com/FrozenYty/dsh-memory/commit/f6859d2a767c1273b68a39112c5cb18716cf39f9
+[0.13.3]: https://github.com/FrozenYty/dsh-memory/commit/9c36f95c8cfd73e0d946e3649d9787d3decf9f0f
+[0.13.2]: https://github.com/FrozenYty/dsh-memory/commit/8051af5b727dc646d8a123adcd97b7528abe170f
+[0.13.1]: https://github.com/FrozenYty/dsh-memory/commit/574ee46763bd59a489c3e07944f150bcd87168b2
+[0.13.0]: https://github.com/FrozenYty/dsh-memory/commit/5fabea84513f8f8191062a019b30f02f03bce8d3
+[0.12.0]: https://github.com/FrozenYty/dsh-memory/commit/1d8f4365aec1dee013b5c38ae31142bbb5f2fac4
+[0.11.0]: https://github.com/FrozenYty/dsh-memory/commit/fefbb2d9b26f8dd60977f030f65e97096a2ad99c
+[0.10.0]: https://github.com/FrozenYty/dsh-memory/commit/c4f7f24a553f954d7679b51ce923be30a4c078fb
+[0.9.0]: https://github.com/FrozenYty/dsh-memory/commit/c6ad1ea83055d7ff59b8c35a44425b2eb435d669
+[0.8.1]: https://github.com/FrozenYty/dsh-memory/commit/39ab0e462890443a776744f389fd5d08092fcf0c
+[0.8.0]: https://github.com/FrozenYty/dsh-memory/commit/17e163ae9b09513974e1da435ae01142b09b7f2f
+[0.7.1]: https://github.com/FrozenYty/dsh-memory/commit/726506f82ac156e975a921bd5bef4d364792417e
+[0.7.0]: https://github.com/FrozenYty/dsh-memory/commit/8fba1b81b7fbae45c432ed4a6e4113408c926bb6
+[0.6.0]: https://github.com/FrozenYty/dsh-memory/commit/ebf33631d6bbd33dc5e2d8d93956a4b57d53eb9f
+[0.5.0]: https://github.com/FrozenYty/dsh-memory/commit/7525cd8b971fa18f60cafd2626f105c88885c297
+[0.4.0]: https://github.com/FrozenYty/dsh-memory/commit/3a07fca0bc6a67b648ffccdc2b78288f2e48ba2a
+[0.3.0]: https://github.com/FrozenYty/dsh-memory/commit/c58b4453b24bec52662ecc0ae9852afc4982cc44
+[0.2.0]: https://github.com/FrozenYty/dsh-memory/commit/0aefd975595dc2150f7682058409161d1a62cf2c
+[0.1.0]: https://github.com/FrozenYty/dsh-memory/commit/8918ffb24cb0249d28497d212fa383a116fbc0cb
