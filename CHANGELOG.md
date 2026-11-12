@@ -7,6 +7,45 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.18.0] — 2026-11-12
+
+### Fixed
+
+A full audit of the write path, the date handling and the multi-directory handling. Four defects, and
+one of them was destroying data that another change had just started relying on.
+
+- **An update erased the entry's `summary`.** `writeEntryFile` rewrote the frontmatter from scratch and
+  only knew three keys, so `summary:` — which the index shows, and which makes an entry more than a
+  filename — disappeared on any update while the body survived. **Every frontmatter key the author added
+  was lost the same way.** Fixed by carrying the existing metadata through and taking ownership only of
+  `status`, `updated`, `triggers` and `summary`, the same way `setStatus` already did.
+- **`memory_write` had no way to set a summary.** The index reads it, no tool wrote it, so it could only
+  be added by hand-editing the file. There is now an optional `summary` parameter; omitted on an update
+  it preserves the existing one rather than clearing it.
+- **Dates were UTC.** Three call sites used `toISOString().slice(0, 10)`, which is the UTC day — so a
+  write between 00:00 and 07:59 in +08 was recorded as the **previous day**, and `memory_audit` would
+  age it from a date the author never wrote it. Now uses the local calendar.
+- **Several code paths read only the first configured directory.** Policy seeding, index syncing, read
+  telemetry and `memory_usage` all took `resolveDirs(...)[0]`. With `machineDir` configured that meant
+  the machine tier was never seeded, never index-synced, its reads were logged against the *workspace*
+  log, and `memory_usage` could never see that its entries were used. All four now cover every
+  configured directory.
+- **The same directory named twice was scanned twice**, which made `memory_usage` read one log twice and
+  double every count. `resolveDirs` now deduplicates on the resolved path.
+
+### Added
+
+- **Nine checks for path resolution**, a group with no direct coverage before — it was reached only
+  indirectly, and the multi-directory bugs lived exactly there.
+
+### Notes
+
+- **`diagnoseNotebook` still reports only the first directory.** Merging two notebooks into one health
+  report is a real design question rather than a one-line fix, and `machineDir` is off by default; it
+  is recorded in the PR instead of guessed at.
+- **`notebook-policy.md` carries no `updated`**, deliberately: the policy is the notebook's rules, and
+  rules do not age. The absence is why `memory_audit` ignores it.
+
 ## [0.17.1] — 2026-11-12
 
 ### Fixed
