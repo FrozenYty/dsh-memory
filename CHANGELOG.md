@@ -510,7 +510,8 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/b5607b80887f6c6f3089d9913106ca2666065122...HEAD
+[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/96e0283...HEAD
+[0.16.0]: https://github.com/FrozenYty/dsh-memory/commit/96e0283
 [0.15.2]: https://github.com/FrozenYty/dsh-memory/commit/b5607b80887f6c6f3089d9913106ca2666065122
 [0.15.1]: https://github.com/FrozenYty/dsh-memory/commit/149d357afdc114fd811471c11e87f20e8e95d3c5
 [0.15.0]: https://github.com/FrozenYty/dsh-memory/commit/2e95a7ae61e0fb1967605124a5b937208852859d
