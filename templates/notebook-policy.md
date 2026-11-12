@@ -77,6 +77,16 @@ happen. A phase carries its own `Evidence:` line whenever its claim is checkable
 `Evidence:` is not decoration: it is what lets a future session check whether an entry still
 holds instead of trusting it blindly. `memory_write` refuses a write without it.
 
+**It must prove the claim on its own.** The command, what went in, and what came back all
+belong in the line, so whoever opens this file next does not need another file to still
+exist. "See `probe.py`" is not evidence — the script's output was what carried the proof,
+and the output is what should have been copied. Write the result, then let the script go.
+
+Two limits worth knowing. The stored line is capped at 1000 characters, and a longer one is
+cut and **reported as truncated** rather than silently shortened — so put the decisive number
+first, because that is what survives a cut. And a claim that needs more than one check gets
+one `Evidence:` line per check, which is how a lifecycle file records each phase.
+
 ## The index
 
 `INDEX.md` holds bare filenames, most-likely-first, so most lookups end after two or three

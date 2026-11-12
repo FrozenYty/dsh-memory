@@ -7,6 +7,31 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.22.1] — 2026-11-13
+
+### Changed
+
+- **The seeded policy now states what makes an `Evidence:` line usable**, which it never did. It said
+  evidence is not decoration and that a write without it is refused — but not that the line has to prove
+  the claim **by itself**:
+
+  > **It must prove the claim on its own.** The command, what went in, and what came back all belong in
+  > the line, so whoever opens this file next does not need another file to still exist. "See `probe.py`"
+  > is not evidence — the script's output was what carried the proof, and the output is what should have
+  > been copied.
+
+  It also names the two limits a writer needs: the 1000-character cap and that exceeding it is **reported
+  as truncated** rather than silently shortened, so the decisive number goes first; and that a claim
+  needing several checks gets one `Evidence:` line per check, which is how a lifecycle file records each
+  phase.
+
+### Notes
+
+- **This is the same defect the policy itself would have caught.** Two entries in the author's notebook
+  carried a folder-pointer `Evidence:` line — exactly the "see that script" shape now named as
+  insufficient — and the policy had no sentence forbidding it. A rule that is not written down is not a
+  rule, and this one had been assumed for weeks.
+
 ## [0.22.0] — 2026-11-13
 
 ### Fixed
@@ -834,7 +859,9 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/f4bcb71...HEAD
+[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/7ffde2f...HEAD
+[0.22.1]: https://github.com/FrozenYty/dsh-memory/commit/7ffde2f
+[0.22.0]: https://github.com/FrozenYty/dsh-memory/commit/0b943ce
 [0.21.2]: https://github.com/FrozenYty/dsh-memory/commit/f4bcb71
 [0.21.1]: https://github.com/FrozenYty/dsh-memory/commit/e12e4c7
 [0.21.0]: https://github.com/FrozenYty/dsh-memory/commit/7aa4b78
