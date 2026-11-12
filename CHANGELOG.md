@@ -7,6 +7,39 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.17.0] — 2026-11-12
+
+### Changed
+
+- **The index now carries a one-line summary per entry, and its budget rises from 1400 to 2800.**
+  Supersedes [ADR 0002](docs/adr/02-filename-index-without-descriptions.md), which chose bare filenames
+  because a list without descriptions cannot decay into truncated prose. That held while a matcher
+  decided what to show. With recall off ([ADR 0015](docs/adr/15-recall-is-model-driven-by-default.md)),
+  the index is the only thing telling the model what is in the notebook, and a filename cannot do it:
+  asked about commit steps it read `github-repo-operations` — the name said *GitHub*, the question was
+  about GitHub, and the entry was about the contributors sidebar cache. **A filename can start a read;
+  it cannot prevent one.**
+- **The summary comes from `summary:` frontmatter when present, otherwise the entry's own heading**, with
+  a trailing date stripped. There is no third source — a field nobody fills in would leave most lines as
+  bare filenames again, which is the failure being fixed. `indexSummaryChars: 0` restores the old
+  behaviour exactly.
+- **Cost: about 700 tokens of prompt prefix instead of 350, and roughly 29 resident entries instead of
+  45.** Entries past the budget remain counted, matched and listed — ADR 0014 is untouched.
+
+### Added
+
+- `indexSummaryChars`, and [ADR 0016](docs/adr/16-index-carries-summaries.md) recording what was
+  rejected: copying Claude Code's format without its budget (200 lines/25KB, ~6000 tokens, against our
+  700) would give a worse index than either — fewer entries than names-only, still vague, many times the
+  cost.
+- Five checks: the summary is present, clipped to the configured length, and `0` restores filenames.
+
+### Fixed
+
+- **`indexSummaryChars: 0` clipped one character instead of all of them.** `slice(0, -1)` on a budget of
+  zero drops the last character rather than the string, so "filenames only" produced nearly every
+  summary. Found by the test that asserts the behaviour, not by reading the code.
+
 ## [0.16.0] — 2026-11-12
 
 ### Changed

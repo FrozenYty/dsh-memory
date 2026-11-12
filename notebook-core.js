@@ -210,6 +210,36 @@ function overflowLine(hidden) {
  * Entries are taken in notebook order, which is "most likely first" as the user arranged it, with
  * newly written entries placed at the top by `syncIndexFile`.
  */
+/**
+ * One index line: the filename `memory_read` needs, then a summary short enough to scan.
+ *
+ * A name alone was not enough. Asked about commit steps, the model read `github-repo-operations` —
+ * reasonable, since the name says "GitHub" and the question was about GitHub — and found an entry
+ * about the contributors sidebar cache. Nothing in the name could have said otherwise. A summary can.
+ *
+ * The summary comes from `summary:` frontmatter when the author wrote one, otherwise from the entry's
+ * own heading, which the policy already requires to be usable on its own. There is no third source: a
+ * hand-written field nobody fills in would leave most lines as bare filenames again.
+ */
+function indexLine(entry, summaryChars) {
+  // Zero means filenames only. Without this the clipping below would run with a budget of 0 and
+  // `slice(0, -1)` would drop one character instead of all of them.
+  if (!(summaryChars > 0)) return `- ${entry.file}\n`
+  const source = String(entry.meta?.summary ?? entry.title ?? '').replace(/\s+/g, ' ').trim()
+  // A trailing date is provenance, not content — it costs characters in every session and tells the
+  // model nothing about whether to read.
+  const summary = source.replace(/\s*[—–-]\s*\d{4}-\d{2}-\d{2}\s*$/, '').trim()
+  if (summary.length === 0) return `- ${entry.file}\n`
+  // Clip on a word boundary. Cutting mid-word ("request.agentO…") makes every line look broken and
+  // costs a character to the ellipsis for nothing; falling back to a hard cut handles a single word
+  // longer than the budget.
+  const clipped =
+    summary.length > summaryChars
+      ? `${(summary.slice(0, summaryChars - 1).replace(/\s+\S*$/, '') || summary.slice(0, summaryChars - 1)).trimEnd()}…`
+      : summary
+  return `- ${entry.file} — ${clipped}\n`
+}
+
 export function buildIndexDetail(entries, config) {
   const visible = entries.filter((entry) => entry.status !== 'disputed')
   if (visible.length === 0) return { text: '', shown: 0, hidden: 0 }
@@ -218,10 +248,11 @@ export function buildIndexDetail(entries, config) {
   const hasPolicy = visible.some((entry) => entry.key === 'notebook-policy')
   const head = indexHead(where, hasPolicy)
 
+  const summaryChars = Number.isInteger(config.indexSummaryChars) ? config.indexSummaryChars : 0
   const chosen = []
   let used = head.length + INDEX_TAIL.length
   for (const entry of visible) {
-    const line = `- ${entry.file}\n`
+    const line = indexLine(entry, summaryChars)
     if (used + line.length > config.indexBudgetChars) break
     chosen.push({ line })
     used += line.length

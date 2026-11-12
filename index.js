@@ -80,7 +80,15 @@ const DEFAULTS = {
   workspaceDir: '.agents/memory',
   machineDir: '',
   showIndex: true,
-  indexBudgetChars: 1400,
+  /**
+   * 2800, not 1400. The index now carries a one-line summary per entry, which is what lets the model
+   * decide whether reading is worth a call — the thing a bare filename cannot support. Roughly 29
+   * entries at 60 characters of summary each, up from 15 with names only. Cost is ~700 tokens of
+   * stable prompt prefix instead of ~350. See docs/adr/16-index-carries-summaries.md.
+   */
+  indexBudgetChars: 2800,
+  /** Characters of summary per index line. 0 falls back to bare filenames. */
+  indexSummaryChars: 60,
   /**
    * Automatic recall is OFF by default. The index names every entry and its header tells the model to
    * read one with `memory_read` when a name matches, so the model decides — which is how a lexical
