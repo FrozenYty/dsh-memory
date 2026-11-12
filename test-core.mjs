@@ -757,7 +757,48 @@ writeFileSync(join(readOnlyDir, 'broken.md'), '---\nstatus: candidate\n---\nno h
 const broken = scanDir(readOnlyDir)
 check('an entry without a heading still loads', broken.length === 1 && broken[0].title === 'broken')
 
-for (const dir of [emptyDir, writeDir, readOnlyDir, writtenDir, seedRoot, driftDir, keepDir, derived]) {
+// ---------------------------------------------------------------------------
+console.log('\n[20] a read through the tool is counted as usage')
+// ---------------------------------------------------------------------------
+// Recall is off by default, so `memory_read` is the only usage signal that still exists — and the
+// better one: the model chose the entry because it needed it, where an automatic publication only means
+// a matcher fired. Without this, memory_usage stops moving the day recall is turned off, and every
+// entry looks unused forever.
+const readTraceDir = mkdtempSync(join(tmpdir(), 'mn-readtrace-'))
+writeFileSync(
+  join(readTraceDir, 'demo.md'),
+  '---\nstatus: candidate\ntriggers: demo\n---\n\n# Demo entry\n\nEvidence: none needed\n',
+  'utf8',
+)
+const readTools = []
+pluginApply(
+  {
+    systemPrompt: { section: () => {}, context: () => {} },
+    tools: { register: (tool) => { readTools.push(tool); return () => {} } },
+    on: () => () => {},
+    get: () => undefined,
+  },
+  { workspaceDir: readTraceDir },
+)
+const readTool = readTools.find((tool) => tool.name === 'memory_read')
+const traceExec = { agent: { session: { header: { cwd: readTraceDir } } } }
+const readResult = await readTool.execute({ name: 'demo' }, traceExec)
+check('memory_read returns the entry', readResult?.name === 'demo' && readResult.content.includes('Demo entry'))
+const readRows = readUsage(readTraceDir)
+check(
+  'the read is recorded in the usage log',
+  readRows.length === 1 && readRows[0].entry === 'demo',
+  JSON.stringify(readRows),
+)
+check(
+  'a read of a missing entry records nothing',
+  await readTool
+    .execute({ name: 'nope' }, traceExec)
+    .then(() => false)
+    .catch(() => readUsage(readTraceDir).length === 1),
+)
+
+for (const dir of [emptyDir, writeDir, readOnlyDir, readTraceDir, writtenDir, seedRoot, driftDir, keepDir, derived]) {
   try {
     rmSync(dir, { recursive: true, force: true })
   } catch {

@@ -363,7 +363,7 @@ export function apply(ctx, config) {
     defineTool({
       name: 'memory_read',
       description:
-        'Read one memory entry in full. Read before acting on a name from the index — a name states the trigger, not the lesson.',
+        'Read one memory entry in full. Read before acting on a name from the index — a name states the trigger, not the lesson. Each read is counted, so memory_usage can tell which entries are actually used.',
       parameters: {
         type: 'object',
         additionalProperties: false,
@@ -391,6 +391,11 @@ export function apply(ctx, config) {
         if (entry === undefined) {
           throw new Error(`no memory named "${key}"; call memory_list to see the available names`)
         }
+        // A read is the honest usage signal once recall is off by default: the model chose this entry
+        // because it needed it, where an automatic publication only means a matcher fired. Swallowed on
+        // failure — telemetry is never worth breaking a read over.
+        const dir = resolveDirs(cfg, exec?.agent?.session?.header?.cwd)[0]
+        if (dir !== undefined) recordUsage(dir, entry.key)
         return { name: entry.key, status: entry.status, content: entry.body.trim() }
       },
     }),
@@ -533,7 +538,7 @@ export function apply(ctx, config) {
     defineTool({
       name: 'memory_usage',
       description:
-        'Report which entries automatic recall has ever published, and which it never has. An entry that has been recalled many times and opened once is doing nothing, and nothing else in the plugin notices; a total would hide the one entry nobody uses. Counted per entry, and at most once per session, because an entry already injected in a session is not injected again — so the count is sessions reached, not matches found. Records entry names and dates only, never the query. NOTE: this counts automatic recall only, which is off by default; a notebook used entirely through memory_read will report every entry as never used, and that means unmeasured, not unused. Use when deciding what to retire only on a profile with recallEnabled: true.',
+        'Report which entries have been used, and which never have — counting both a read through memory_read and, when recallEnabled is on, an automatic publication. An entry used often but opened once is doing nothing, and nothing else in the plugin notices; a total would hide the entry nobody uses. Counted per entry, and at most once per session, because a second read of the same entry in one session is not new information — so the count is sessions reached, not calls made. Records entry names and dates only, never the query. Use when deciding what to retire.',
       parameters: { type: 'object', additionalProperties: false, properties: {} },
       output: {
         schema: {
