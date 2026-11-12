@@ -534,11 +534,35 @@ export function renderRecall(hits, budget) {
 // ---------------------------------------------------------------------------
 
 /**
- * Audit entries for the two things a script can check without executing arbitrary notebook
- * commands: whether a claim carries evidence at all, and whether the entry has been touched
- * recently. Age is the honest proxy for "the command in Evidence may no longer hold" —
- * running whatever a markdown file says is not a safe default, so the signal is staleness plus
- * a human re-check, not automatic re-execution.
+ * How much of this entry's prose is Chinese.
+ *
+ * The notebook is written in English so that entries are readable to whoever reads them next,
+ * regardless of what language the conversation was in. Chinese *inside* code spans and fences is
+ * expected and correct — a quoted error message, a command's output, a trigger phrase — so those are
+ * stripped before measuring. What is measured is the language the author chose for the prose.
+ *
+ * Found five entries written in Chinese, three of them by the same assistant that wrote the rule:
+ * a convention with no check is a convention that erodes, and it erodes fastest in the one place
+ * nobody looks.
+ */
+function cjkDensity(body) {
+  const prose = String(body)
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/`[^`]*`/g, '')
+    .replace(/https?:\S+/g, '')
+  const visible = prose.replace(/\s/g, '')
+  if (visible.length === 0) return 0
+  return (prose.match(/[\u4e00-\u9fff]/g) ?? []).length / visible.length
+}
+
+/**
+ * Audit entries for the things a script can check without executing arbitrary notebook commands:
+ * whether a claim carries evidence at all, whether the entry has been touched recently, and whether
+ * its prose is in the notebook's language.
+ *
+ * Age is the honest proxy for "the command in Evidence may no longer hold" — running whatever a
+ * markdown file says is not a safe default, so the signal is staleness plus a human re-check, not
+ * automatic re-execution.
  */
 export function auditEntries(entries, options = {}) {
   const staleDays = options.staleDays ?? 90
@@ -546,11 +570,15 @@ export function auditEntries(entries, options = {}) {
   const staleMs = staleDays * 86_400_000
   const missingEvidence = []
   const stale = []
+  const chineseProse = []
   for (const entry of entries) {
     if (!/Evidence:/.test(entry.body)) missingEvidence.push(entry)
     if (now - entry.mtimeMs > staleMs) stale.push(entry)
+    // 0.15 sits in the gap the real notebook showed: entries that only quote a Chinese error sit at
+    // 0-3%, and entries actually written in Chinese sit at 43% and above. Nothing was near the line.
+    if (cjkDensity(entry.body) > 0.15) chineseProse.push(entry)
   }
-  return { total: entries.length, missingEvidence, stale, staleDays }
+  return { total: entries.length, missingEvidence, stale, staleDays, chineseProse }
 }
 
 // ---------------------------------------------------------------------------
@@ -913,7 +941,15 @@ export function writeEntryFile(dir, fields) {
   for (const [key, value] of Object.entries(carried)) lines.push(`${key}: ${value}`)
   lines.push('---', '')
   lines.push(`# ${fields.title}`, '')
-  if (fields.body.trim().length > 0) lines.push(fields.body.trim(), '')
+  // A body whose last paragraph is *the same claim* as `evidence` would otherwise carry it twice —
+  // found in the live notebook, where one entry held two lines and the second was a truncated leftover.
+  // Only an identical trailing line is replaced. A different one is kept, because it may be a lifecycle
+  // entry's last phase evidence, and there is no way to tell the two apart from the text alone: the
+  // safe rule keeps content and removes only the duplicate.
+  const paragraphs = fields.body.trim().split(/\n{2,}/)
+  if (paragraphs.length > 0 && paragraphs[paragraphs.length - 1].trim() === `Evidence: \`${fields.evidence}\``) paragraphs.pop()
+  const body = paragraphs.join('\n\n').trimEnd()
+  if (body.length > 0) lines.push(body, '')
   lines.push(`Evidence: \`${fields.evidence}\``, '')
   writeFileSync(path, lines.join('\n'), 'utf8')
   // The index is derived from the directory, so it is rebuilt rather than appended to. Appending

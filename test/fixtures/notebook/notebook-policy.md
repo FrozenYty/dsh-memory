@@ -58,6 +58,11 @@ Optional frontmatter, two fields:
 - `triggers`: recall words in whatever language is actually spoken. A multi-word trigger
   matches only when every word appears, so keep phrases specific. Without triggers, a Chinese
   message cannot find an English body.
+- **The title and body are English**, whatever language the conversation was in. Whoever reads this
+  next should not need to speak today's language to use it. Chinese belongs in `triggers`, and inside
+  code spans and fences — a quoted error message or a command's output is evidence, not prose.
+  `memory_audit` reports entries whose prose is not English, because a convention nobody checks is a
+  convention that erodes, and five entries had been written in Chinese before it was checked.
 
 A moment file:
 

@@ -7,6 +7,38 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.19.0] — 2026-11-12
+
+### Added
+
+- **`memory_audit` reports entries whose prose is not English.** The notebook is written in English
+  whatever language the conversation is in, so that whoever reads it next does not need to speak today's
+  language. That rule existed in `AGENTS.md` and nowhere in the plugin — **and it eroded exactly as a
+  rule with no check does**: six entries were found written in Chinese, **four of them by the assistant
+  that knew the rule.**
+- **`memory_write`'s description states the language rule**, and the shipped policy now carries it as a
+  bullet under Entry format. A convention in a document nobody opens is not a convention.
+
+### Fixed
+
+- **A body ending with its own `Evidence:` line was written with a second one appended**, the two
+  disagreeing. The live notebook had an entry carrying two, the second truncated mid-sentence. Now a
+  trailing line that **repeats the `evidence` argument** is replaced instead of duplicated.
+- **A different trailing line is deliberately kept.** It may be a lifecycle entry's last-phase evidence,
+  and from the text alone the two cases are indistinguishable — so the rule removes only the duplicate
+  rather than silently discarding content. The first attempt used `/\n\nEvidence:[\s\S]*$/`, which is
+  greedy and ate **every** per-phase evidence line; the test caught it.
+
+### Notes
+
+- **Four of the five original offenders were mine.** `revert-the-fix-to-prove-the-test`,
+  `set-content-no-newline-collapses-arrays`, `github-contributor-cache` and
+  `name-the-artifact-directory-in-every-brief` — all written today, all in Chinese, by the same
+  assistant that had just written "write files in English" into the workspace instructions.
+- **Detection measures prose, not characters.** Chinese inside code fences and spans is stripped first,
+  because a quoted Chinese error message is evidence and must not be flagged. The real notebook showed a
+  clean gap: entries that only quote an error sit at 0–3%, entries written in Chinese at 43% and up.
+
 ## [0.18.3] — 2026-11-12
 
 ### Added

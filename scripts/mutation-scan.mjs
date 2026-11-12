@@ -115,6 +115,13 @@ const mutations = [
 
   // --- audit ---------------------------------------------------------------
   ['entries age after one day', CORE, 'const staleDays = options.staleDays ?? 90', 'const staleDays = options.staleDays ?? 1'],
+  ['Chinese prose stops being reported', CORE, 'if (cjkDensity(entry.body) > 0.15) chineseProse.push(entry)', ''],
+  ['every entry counts as Chinese prose', CORE, 'if (cjkDensity(entry.body) > 0.15) chineseProse.push(entry)', 'chineseProse.push(entry)'],
+  ['Chinese inside code stops being stripped before measuring', CORE, ".replace(/```[\\s\\S]*?```/g, '')\n    .replace(/`[^`]*`/g, '')", ''],
+
+  // --- evidence lines ------------------------------------------------------
+  ['a repeated evidence line is written twice', CORE, 'if (paragraphs.length > 0 && paragraphs[paragraphs.length - 1].trim() === `Evidence: \\`${fields.evidence}\\``) paragraphs.pop()', ''],
+  ['a trailing evidence line is always dropped', CORE, 'if (paragraphs.length > 0 && paragraphs[paragraphs.length - 1].trim() === `Evidence: \\`${fields.evidence}\\``) paragraphs.pop()', 'if (paragraphs.length > 0) paragraphs.pop()'],
 ]
 
 const run = () => {

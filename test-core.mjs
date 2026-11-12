@@ -373,6 +373,75 @@ check(
   cleanAudit.missingEvidence.length === 0 && cleanAudit.stale.length === 0,
 )
 
+// The notebook is written in English whatever language the conversation is in — a convention that
+// eroded silently: five entries were found in Chinese, three of them written by the assistant that
+// knew the rule. The distinction that makes it checkable is code versus prose: a quoted Chinese error
+// message is evidence and must not be flagged.
+const langDir = mkdtempSync(join(tmpdir(), 'mn-lang-'))
+writeFileSync(join(langDir, 'english.md'), '# A conclusion in English\n\nBody also in English.\n\nEvidence: `a command`\n', 'utf8')
+writeFileSync(
+  join(langDir, 'chinese.md'),
+  '# 中文标题\n\n这一段正文完全是用中文写的，因为它违反了笔记本的语言约定，应该被审计报告出来。\n\nEvidence: `a command`\n',
+  'utf8',
+)
+writeFileSync(
+  join(langDir, 'quoting.md'),
+  '# Only code quotes Chinese\n\nThe error was:\n\n```\n程序运行失败：访问被拒绝\n```\n\nEvidence: `程序运行失败`\n',
+  'utf8',
+)
+const langFlagged = auditEntries(loadNotebook({ ...config, workspaceDir: langDir }, '.'), { staleDays: 90 }).chineseProse.map(
+  (entry) => entry.key,
+)
+check('an entry written in Chinese is reported', langFlagged.includes('chinese'), langFlagged.join(',') || '(none)')
+check('an English entry is not reported', !langFlagged.includes('english'))
+check('Chinese inside a code block or span is not prose', !langFlagged.includes('quoting'), langFlagged.join(',') || '(none)')
+rmSync(langDir, { recursive: true, force: true })
+
+// A body whose last paragraph repeats the `evidence` argument would otherwise carry the claim twice —
+// the live notebook had an entry with two lines, the second a truncated leftover. A *different*
+// trailing line is kept: it may be a lifecycle entry's last phase evidence, and the text alone cannot
+// tell the two apart, so the safe rule removes only the duplicate.
+const dupDir = mkdtempSync(join(tmpdir(), 'mn-dup-evidence-'))
+writeEntryFile(dupDir, {
+  key: 'dup',
+  title: 'Dup',
+  status: 'candidate',
+  body: 'Prose here.\n\nEvidence: `the same command`',
+  evidence: 'the same command',
+})
+const dupRaw = readFileSync(join(dupDir, 'dup.md'), 'utf8')
+const dupCount = (dupRaw.match(/^Evidence:/gm) ?? []).length
+check('an evidence line repeated in the body is not written twice', dupCount === 1, `${dupCount} line(s)`)
+
+writeEntryFile(dupDir, {
+  key: 'phases',
+  title: 'Phases',
+  status: 'candidate',
+  body: '## Phase one\n\nEvidence: `first`\n\n## Phase two\n\nEvidence: `second`',
+  evidence: 'the whole thing',
+})
+const phaseRaw = readFileSync(join(dupDir, 'phases.md'), 'utf8')
+const phaseCount = (phaseRaw.match(/^Evidence:/gm) ?? []).length
+check(
+  'per-phase Evidence survives, including the last phase',
+  phaseCount === 3 && phaseRaw.includes('`first`') && phaseRaw.includes('`second`') && phaseRaw.includes('the whole thing'),
+  `${phaseCount} line(s)`,
+)
+
+writeEntryFile(dupDir, {
+  key: 'stale',
+  title: 'Stale',
+  status: 'candidate',
+  body: 'Prose.\n\nEvidence: `the old command`',
+  evidence: 'the new command',
+})
+const staleRaw = readFileSync(join(dupDir, 'stale.md'), 'utf8')
+check(
+  'a different trailing evidence line is kept rather than silently replaced',
+  staleRaw.includes('the old command') && staleRaw.includes('the new command'),
+)
+rmSync(dupDir, { recursive: true, force: true })
+
 // ---------------------------------------------------------------------------
 console.log('\n[8] index drift')
 // ---------------------------------------------------------------------------
