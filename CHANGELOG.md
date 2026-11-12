@@ -7,6 +7,28 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.21.2] — 2026-11-13
+
+### Changed
+
+- **Both READMEs stop saying "no model call per turn".** Same correction as the package description in
+  0.21.1, now applied to the two files a reader actually opens first:
+
+  > **Your notes, visible to the agent.** A directory of markdown files that becomes its memory — no
+  > embeddings, no server, no ranking model. The agent reads the index and decides what to open.
+
+  The old phrasing read as "no model involved", which became false when recall turned model-driven. The
+  replacement keeps the three things that are still true and states the mechanism that replaced the
+  third: there is no ranking model, and the agent does the ranking by reading.
+
+### Notes
+
+- **`docs/adr/10-capture-hint.md` still says "no model call on the read path", deliberately.** It is
+  accurate: a tool call the model makes inside an existing conversation is not an additional model call,
+  and that ADR is a decision record whose text describes the decision that was made.
+- **`CHANGELOG.md` keeps the old phrase in its own history**, because rewriting a changelog entry to
+  match the present is how a record stops being a record.
+
 ## [0.21.1] — 2026-11-13
 
 ### Changed
