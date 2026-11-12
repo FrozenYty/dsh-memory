@@ -58,12 +58,12 @@ The load-bearing constraint: **this is a profile-linked bundle, so it cannot imp
 ## 5. Verify before reporting
 
 ```sh
-node test-core.mjs                    # behavioural checks
-node scripts/eval-recall.mjs          # recall judgements over test/qrels.json
+node tests/core.test.mjs                    # behavioural checks
+node scripts/eval-recall.mjs          # recall judgements over tests/qrels.json
 node scripts/check-paths.mjs          # no machine-specific paths in any document
 node scripts/check-docs.mjs           # ADRs, links, locales, version, config, policy copies, README language
-node scripts/check-evidence.mjs --dir test/fixtures/notebook   # evidence completeness and age
-node scripts/check-index.mjs --dir test/fixtures/notebook      # INDEX.md agrees with the directory
+node scripts/check-evidence.mjs --dir tests/fixtures/notebook   # evidence completeness and age
+node scripts/check-index.mjs --dir tests/fixtures/notebook      # INDEX.md agrees with the directory
 node --check index.js                 # syntax
 node scripts/check-commit-messages.mjs --range origin/main..HEAD   # no tool co-author
 ```

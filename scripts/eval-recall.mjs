@@ -23,8 +23,8 @@ const flag = (name, fallback) => {
   return at === -1 ? fallback : argv[at + 1]
 }
 
-const dir = flag('--dir', join(repo, 'test', 'fixtures', 'notebook'))
-const qrelsPath = flag('--qrels', join(repo, 'test', 'qrels.json'))
+const dir = flag('--dir', join(repo, 'tests', 'fixtures', 'notebook'))
+const qrelsPath = flag('--qrels', join(repo, 'tests', 'qrels.json'))
 const asJson = argv.includes('--json')
 
 const config = {

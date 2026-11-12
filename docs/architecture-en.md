@@ -232,7 +232,7 @@ matching rules and the vocabulary have to be tuned together; neither is correct 
 ### What it measures
 
 Four sets, run against the author's notebook. The first three are committed as
-[`test/qrels.json`](../test/qrels.json); the fourth is the one that changed the default.
+[`tests/qrels.json`](../tests/qrels.json); the fourth is the one that changed the default.
 
 | Set | Result | What it means |
 |---|---|---|

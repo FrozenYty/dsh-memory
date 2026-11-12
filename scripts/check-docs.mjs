@@ -307,7 +307,7 @@ function checkConfigTable() {
 // the rename to dsh-memory updated the template and left the fixture naming the old package.
 function checkPolicyCopies() {
   const template = readText(path.join(repoRoot, 'templates', 'notebook-policy.md'));
-  const fixture = readText(path.join(repoRoot, 'test', 'fixtures', 'notebook', 'notebook-policy.md'));
+  const fixture = readText(path.join(repoRoot, 'tests', 'fixtures', 'notebook', 'notebook-policy.md'));
   if (template === null || fixture === null) {
     return { ok: true, summary: 'no pair of policy copies to compare', details: [] };
   }
@@ -323,7 +323,7 @@ function checkPolicyCopies() {
     ok: false,
     summary: 'template and fixture policy agree',
     details: [
-      'templates/notebook-policy.md and test/fixtures/notebook/notebook-policy.md are one document kept in two places',
+      'templates/notebook-policy.md and tests/fixtures/notebook/notebook-policy.md are one document kept in two places',
       ...onlyTemplate.map((line) => `only in template: ${line.slice(0, 80)}`),
       ...onlyFixture.map((line) => `only in fixture: ${line.slice(0, 80)}`),
     ],

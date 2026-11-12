@@ -126,7 +126,7 @@ const mutations = [
 
 const run = () => {
   try {
-    execFileSync('cmd', ['/c', `node test-core.mjs > "${OUT}" 2>&1`], { cwd: ROOT })
+    execFileSync('cmd', ['/c', `node tests/core.test.mjs > "${OUT}" 2>&1`], { cwd: ROOT })
     return { ok: true, output: readFileSync(OUT, 'utf8') }
   } catch {
     return { ok: false, output: existsSync(OUT) ? readFileSync(OUT, 'utf8') : '' }

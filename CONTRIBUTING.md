@@ -79,12 +79,12 @@ Every job below blocks the merge. The list grows; the rule does not.
 | Job | Command | Fix |
 |---|---|---|
 | Syntax | `node --check index.js && node --check notebook-core.js` | read the reported line |
-| Tests | `node test-core.mjs` | write the failing case first |
-| Recall | `node scripts/eval-recall.mjs` | a flipped case is a result: fix the rule, or edit `test/qrels.json` and say why |
+| Tests | `node tests/core.test.mjs` | write the failing case first |
+| Recall | `node scripts/eval-recall.mjs` | a flipped case is a result: fix the rule, or edit `tests/qrels.json` and say why |
 | Paths | `node scripts/check-paths.mjs` | write it relative to the repository root |
 | Docs | `node scripts/check-docs.mjs` | list the ADR, fix the switcher, fix the link, add the missing translation, record the version, document the key, write the English README in English |
-| Evidence | `node scripts/check-evidence.mjs --dir test/fixtures/notebook` | add the missing `Evidence:` line |
-| Index | `node scripts/check-index.mjs --dir test/fixtures/notebook` | list the file, or remove the stale line |
+| Evidence | `node scripts/check-evidence.mjs --dir tests/fixtures/notebook` | add the missing `Evidence:` line |
+| Index | `node scripts/check-index.mjs --dir tests/fixtures/notebook` | list the file, or remove the stale line |
 | Co-author | `node scripts/check-commit-messages.mjs --range <base>..HEAD` | remove the trailer |
 
 There is no linter and no formatter. The code is plain ES modules with no dependencies, and adding

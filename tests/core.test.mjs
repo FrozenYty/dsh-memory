@@ -1,17 +1,17 @@
 /**
  * Behavioural tests for the memory notebook core.
  *
- * They run against the fixture notebook in `test/fixtures/notebook`, not against any real
+ * They run against the fixture notebook in `tests/fixtures/notebook`, not against any real
  * notebook on the author's machine: a test that needs data outside the repository passes here and
  * fails in CI, which is exactly what happened before this fixture existed.
  *
- *   node test-core.mjs
+ *   node tests/core.test.mjs
  */
 import { existsSync, mkdirSync, mkdtempSync, appendFileSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { apply as pluginApply } from './index.js'
+import { apply as pluginApply } from '../index.js'
 import {
   ACK_PATTERN,
   auditEntries,
@@ -39,9 +39,9 @@ import {
   usageReport,
   USAGE_FILE,
   writeEntryFile,
-} from './notebook-core.js'
+} from '../notebook-core.js'
 
-const FIXTURE_ROOT = fileURLToPath(new URL('./test/fixtures', import.meta.url))
+const FIXTURE_ROOT = fileURLToPath(new URL('./fixtures', import.meta.url))
 
 const config = {
   workspaceDir: 'notebook',
@@ -512,7 +512,7 @@ check(
 
 // The template is a package resource, not a file every user is assumed to have. If it stops
 // shipping, a fresh install silently gets no policy and the index stops naming one.
-const shippedTemplate = readFileSync(new URL('./templates/notebook-policy.md', import.meta.url), 'utf8')
+const shippedTemplate = readFileSync(new URL('../templates/notebook-policy.md', import.meta.url), 'utf8')
 check('the bundled policy template ships', shippedTemplate.length > 1000, `${shippedTemplate.length} chars`)
 check('the shipped template has an Evidence line', shippedTemplate.includes('Evidence:'))
 
@@ -521,7 +521,7 @@ console.log('\n[10] recall quality: false-positive budget')
 // ---------------------------------------------------------------------------
 // Ordinary work talk that shares vocabulary with the fixtures but is not about any of them. This is
 // the budget that matters: recall improvements must not be paid for here. The list lives in
-// test/qrels.json, shared with scripts/eval-recall.mjs, so the two suites cannot drift apart.
+// tests/qrels.json, shared with scripts/eval-recall.mjs, so the two suites cannot drift apart.
 const qrels = JSON.parse(readFileSync(FIXTURE_ROOT + '/../qrels.json', 'utf8'))
 const offTopic = qrels.offTopic
 let falsePositives = 0
@@ -1034,7 +1034,7 @@ rmSync(dateDir, { recursive: true, force: true })
 // the other sixteen hours the two calendars agree and it passes either way. Mutation testing proved
 // that: reverting the fix left it green. This is the version that cannot be dodged by the clock.
 // Comments are stripped first, because the fix's own explanation names the function it replaced.
-const coreSource = readFileSync(new URL('./notebook-core.js', import.meta.url), 'utf8')
+const coreSource = readFileSync(new URL('../notebook-core.js', import.meta.url), 'utf8')
   .replace(/\/\*[\s\S]*?\*\//g, '')
   .replace(/\/\/.*$/gm, '')
 check(

@@ -49,13 +49,13 @@ copy. [docs/architecture-en.md](docs/architecture-en.md) explains why the parts 
 Two things are measured here, and the second one is why automatic recall is off by default.
 
 **Matching quality**, on a 29-entry notebook, both directions at once, with the judged set committed in
-[`test/qrels.json`](test/qrels.json):
+[`tests/qrels.json`](tests/qrels.json):
 
 | Query set | Result |
 |---|---|
 | On-topic questions in the notebook's own vocabulary | 52/52 |
 | New phrasings, written from the situation | 6/18 |
-| Off-topic queries in `test/qrels.json` | 0/24 fired |
+| Off-topic queries in `tests/qrels.json` | 0/24 fired |
 
 **And then the set nobody writes for themselves** — ordinary talk that merely shares vocabulary with the
 notebook:
@@ -226,7 +226,7 @@ recallable, and are listed by `memory_list`. See
 
 - **Every `memory_*` tool reports `unknown tool`.** The plugin failed to load. Almost always a schema
   the host rejects — the host validates tool schemas while loading and rejects the whole plugin, not
-  one tool. Check the host log; the rules it enforces are copied into `test-core.mjs` under
+  one tool. Check the host log; the rules it enforces are copied into `tests/core.test.mjs` under
   *every tool schema stays inside the host subset*.
 - **Memory never fires.** Call `memory_health` first. It separates "broken" from "nothing matched" —
   the two states that look identical from a query that returned nothing. If it says `ok`, the notebook
@@ -239,12 +239,12 @@ recallable, and are listed by `memory_list`. See
 ## Verified
 
 ```sh
-node test-core.mjs                 # behavioural checks, no dependencies
-node scripts/eval-recall.mjs       # recall judgements over test/qrels.json
+node tests/core.test.mjs                 # behavioural checks, no dependencies
+node scripts/eval-recall.mjs       # recall judgements over tests/qrels.json
 node scripts/check-paths.mjs       # no machine-specific paths in any document
 node scripts/check-docs.mjs         # ADRs listed, language switchers, links resolve
-node scripts/check-evidence.mjs --dir test/fixtures/notebook
-node scripts/check-index.mjs --dir test/fixtures/notebook
+node scripts/check-evidence.mjs --dir tests/fixtures/notebook
+node scripts/check-index.mjs --dir tests/fixtures/notebook
 ```
 
 CI runs all of them and blocks a merge. The suite covers discovery and `INDEX.md` ordering, index

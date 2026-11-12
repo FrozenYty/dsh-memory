@@ -1,6 +1,6 @@
 {
   "name": "dsh-memory",
-  "version": "0.19.0",
+  "version": "0.20.0",
   "private": true,
   "description": "Your experience, visible to the agent — a markdown memory notebook for DeepSeek Harness. No embeddings, no server, no model call per turn.",
   "type": "module",
@@ -14,7 +14,7 @@
   },
   "homepage": "https://github.com/FrozenYty/dsh-memory#readme",
   "scripts": {
-    "test": "node test-core.mjs"
+    "test": "node tests/core.test.mjs"
   },
   "main": "index.js",
   "exports": {
@@ -28,7 +28,6 @@
     "notebook-core.js",
     "cordis.patch.yml",
     "README.md",
-    "test-core.mjs",
     "templates/*.md",
     "locale/*.json",
     "icon.svg"
