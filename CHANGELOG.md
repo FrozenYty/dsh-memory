@@ -7,6 +7,31 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.21.1] — 2026-11-13
+
+### Changed
+
+- **The `package.json` description no longer says "no model call per turn".** That sentence was accurate
+  when a lexical matcher decided which entries to publish, and became misleading when recall turned
+  model-driven ([ADR 0015](docs/adr/15-recall-is-model-driven-by-default.md)): **the model now reads the
+  index and decides**, which is the whole point. What is still true — and now says so — is that the read
+  path adds no *extra* model call and no ranking service.
+- **New text**, aligned with the README's tagline and with the shape the sibling project uses: a claim,
+  what it is, then three mechanisms that can each be checked against the code:
+
+  > Your experience, visible to the agent — a markdown memory notebook for DeepSeek Harness. Every entry
+  > carries the evidence that proves it, every index line says what it is about, and the agent reads on
+  > purpose.
+
+  Each of the three is a rule this repository enforces: `evidence` is a required write argument, the
+  index line is `filename — summary`, and `recallEnabled` defaults to `false`.
+
+### Notes
+
+- **`README.md` line 6 carries the same phrase** ("no embeddings, no server, no model call per turn") and
+  is now inconsistent with this description. Left alone in this change: it is README prose with its own
+  context, and changing it is a separate decision about how the first paragraph reads.
+
 ## [0.21.0] — 2026-11-12
 
 ### Added
@@ -753,7 +778,10 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/4a67db4...HEAD
+[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/e12e4c7...HEAD
+[0.21.1]: https://github.com/FrozenYty/dsh-memory/commit/e12e4c7
+[0.21.0]: https://github.com/FrozenYty/dsh-memory/commit/7aa4b78
+[0.20.0]: https://github.com/FrozenYty/dsh-memory/commit/7aa4b78
 [0.19.0]: https://github.com/FrozenYty/dsh-memory/commit/4a67db4
 [0.18.3]: https://github.com/FrozenYty/dsh-memory/commit/e625477
 [0.18.2]: https://github.com/FrozenYty/dsh-memory/commit/dd0dad9
