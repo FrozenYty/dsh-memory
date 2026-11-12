@@ -126,7 +126,21 @@ Conventions that keep the set from drifting:
 - **An accepted ADR is closed.** To change a decision, write a new ADR that supersedes it and add
   `Superseded by NNNN` to the old one.
 
-## 7. Definition of done
+## 7. Versions
+
+The version lives in `package.json` and in `CHANGELOG.md`, and nothing else reads it.
+
+**No tags and no releases.** This plugin is used by one person and a friend, and no consumer resolves a
+version tag — twenty-two of them had accumulated from habit before being deleted on 2026-11-12. The
+version number still moves, because it identifies what is installed and the plugin page shows it, but it
+is not published.
+
+- Bump `package.json` and add the `CHANGELOG.md` entry in the same change. `check-docs` fails when the
+  version has no section, which is how a tag once went out ahead of both.
+- **Never point a link at `releases/tag/…`.** With no tags it 404s. Link a version to the commit it was
+  cut from — a commit never moves.
+
+## 8. Definition of done
 
 A change is done when:
 
@@ -135,3 +149,4 @@ A change is done when:
 - [ ] Both READMEs are updated when behaviour or a default changed
 - [ ] A new or changed decision has an ADR, and the table in `docs/INDEX-en.md` lists it
 - [ ] `CHANGELOG.md` has an entry under `[Unreleased]`
+- [ ] The version is bumped in the same change, with no tag created

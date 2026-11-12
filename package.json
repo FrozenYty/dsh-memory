@@ -1,6 +1,6 @@
 {
   "name": "dsh-memory",
-  "version": "0.15.1",
+  "version": "0.15.2",
   "private": true,
   "description": "Your experience, visible to the agent — a markdown memory notebook for DeepSeek Harness. No embeddings, no server, no model call per turn.",
   "type": "module",
