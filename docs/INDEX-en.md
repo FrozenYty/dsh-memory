@@ -65,6 +65,9 @@ else.
   maintaining two histories for every release. It is a record, not a document.
 - **`docs/adr/` is English only.** An ADR is a decision record read by whoever implements next, and
   that reader's language has nothing to do with the conversation that produced it.
+- **`AGENTS.md` and `CONTRIBUTING.md` are English only.** They are instructions to an assistant and to a
+  contributor, not reader-facing documents; the conversation they arise from is in Chinese, and
+  translating them would put a second copy of the rules somewhere to drift.
 - **Nothing machine-specific.** No absolute paths, no user names, no local folder names. Commands are
   written relative to the repository root. `scripts/check-paths.mjs` enforces this across every
   markdown file.
