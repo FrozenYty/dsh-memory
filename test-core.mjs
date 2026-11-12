@@ -45,7 +45,8 @@ const config = {
   workspaceDir: 'notebook',
   machineDir: '',
   showIndex: true,
-  indexBudgetChars: 1400,
+  indexBudgetChars: 2800,
+  indexSummaryChars: 60,
   recallEnabled: true,
   recallBudgetChars: 1400,
   maxRecall: 2,
@@ -100,10 +101,33 @@ check(
 check('every fixture entry carries triggers', entries.every((entry) => entry.triggers.length > 0))
 
 const index = buildIndex(entries, config)
-check('index lists bare filenames', entries.every((entry) => index.includes(`- ${entry.file}`)))
-check('index carries no descriptions', !index.includes(' — '), 'found an em-dash description')
+check('index names every entry', entries.every((entry) => index.includes(`- ${entry.file}`)))
+// The summary is what lets the model decide whether reading is worth a call. A bare filename could not:
+// asked about commit steps it read `github-repo-operations` — reasonable, and wrong.
+check('index lines carry a summary after the filename', /\.md — \S/.test(index), index.split('\n').find((l) => l.includes(' — ')) ?? '(no summary line)')
+check('a summary is clipped to the configured length', (() => {
+  const line = buildIndex(entries.slice(0, 1), { ...config, indexSummaryChars: 20 })
+  const summary = line.match(/\.md — (.+)/)?.[1] ?? ''
+  return summary.length > 0 && summary.length <= 21
+})(), buildIndex(entries.slice(0, 1), { ...config, indexSummaryChars: 20 }).match(/\.md — (.+)/)?.[1])
+check('zero means filenames only', !buildIndex(entries, { ...config, indexSummaryChars: 0 }).includes(' — '))
+// A `summary:` in the frontmatter wins over the heading. Without a test for this the field did nothing
+// at all: the entry never carried it, every line fell back to the heading, and a fallback that always
+// succeeds looks exactly like success.
+const summaryProbe = mkdtempSync(join(tmpdir(), 'mn-summary-'))
+writeFileSync(
+  join(summaryProbe, 'with-summary.md'),
+  '---\nstatus: candidate\nsummary: The summary field wins\n---\n\n# A heading that must not appear\n\nEvidence: n/a\n',
+  'utf8',
+)
+const probeIndex = buildIndex(loadNotebook({ ...config, workspaceDir: summaryProbe }, '.'), config)
+check(
+  'a summary in the frontmatter wins over the heading',
+  probeIndex.includes('The summary field wins') && !probeIndex.includes('A heading that must not appear'),
+  probeIndex.split('\n').find((l) => l.startsWith('- ')) ?? '(no line)',
+)
 check('index respects the char budget', index.length <= config.indexBudgetChars, `${index.length} chars`)
-check('index stays cheap', index.length < 1000, `${index.length} chars`)
+check('the summary line costs more than a bare name', index.length > 1000, `${index.length} chars`)
 check('empty notebook injects nothing', buildIndex([], config) === '')
 
 const emptyDir = mkdtempSync(join(tmpdir(), 'mn-empty-'))

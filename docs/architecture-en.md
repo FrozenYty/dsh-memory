@@ -157,10 +157,12 @@ is what keeps one turn from paying for recall on every step.
 
 ## Cost model
 
-- Index: one line per entry, no descriptions. ~34 characters per entry, measured at ~10 tokens per
-  turn each. `indexBudgetChars` decides how many are named — 1400 characters is ~326 tokens and ~34
-  entries, 700 is ~200 tokens and ~10 — and the rest are counted rather than dropped. Capacity is
-  unbounded; only the token cost is chosen.
+- Index: one line per entry — the filename and a summary clipped to `indexSummaryChars`, default 60.
+  Around 94 characters and ~24 tokens per entry, so `indexBudgetChars` at its default 2800 names about
+  29 entries for ~700 tokens. `indexSummaryChars: 0` restores bare filenames at ~34 characters and ~10
+  tokens each, which fits roughly 75 in the same budget — more entries, less about each. Either way the
+  rest are counted rather than dropped: capacity is unbounded, and only the token cost is chosen. See
+  [ADR 0016](adr/16-index-carries-summaries.md).
 - Recall: at most `maxRecall` entries, each clamped to `recallBudgetChars` total including wrapper.
   A single long entry measured 1,399 characters (~390 tokens) at the default budget.
 - Per-session suppression: an entry is injected at most once per session. Asking the same kind of

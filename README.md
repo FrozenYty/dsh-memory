@@ -28,9 +28,10 @@ This plugin takes the second shape and fixes two things: *when to look*, and *wh
 
 ## What it does
 
-1. **A resident index.** The notebook's filenames are appended to the system prompt as a small
-   section. No descriptions, so the list cannot decay into truncated prose. An empty notebook injects
-   **zero bytes** — the section disappears entirely.
+1. **A resident index.** Each entry appears as its filename plus a one-line summary, clipped to a fixed
+   length. The summary is what lets the model decide whether reading is worth a call — a filename can
+   start a read, it cannot prevent one. An empty notebook injects **zero bytes** — the section
+   disappears entirely.
 2. **The model reads what it needs.** The index header tells it to call `memory_read` when a name
    matches what it is about to do. **Nothing is injected automatically** — see
    [How well it works](#how-well-it-works) for the measurements behind that, and `recallEnabled` to
@@ -145,7 +146,8 @@ Set values under the `memory` row in the profile's `cordis.patch.yml`. This bund
 | `workspaceDir` | `.agents/memory` | Notebook directory, relative to the session working directory. `''` disables this tier. |
 | `machineDir` | `''` | Optional machine-wide tier, absolute or `~`-prefixed. The workspace tier wins name collisions. |
 | `showIndex` | `true` | Inject the filename index. |
-| `indexBudgetChars` | `1400` | Ceiling on how many entries are **named** in the index, not on how many the notebook may hold. Entries past it are counted in the index and stay recallable. |
+| `indexBudgetChars` | `2800` | Ceiling on how many entries are **named** in the index, not on how many the notebook may hold. Entries past it are counted in the index and stay recallable. |
+| `indexSummaryChars` | `60` | Characters of summary per index line, after the filename. `0` falls back to bare filenames — more entries, less information about each. |
 | `recallEnabled` | `false` | Publish a matching entry for the turn. Off by default: a lexical matcher cannot tell "certificate error" from "certificate exam". |
 | `recallBudgetChars` | `1400` | Ceiling on one recall publication. |
 | `maxRecall` | `2` | Maximum entries published for one message. |
