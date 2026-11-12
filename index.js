@@ -418,7 +418,7 @@ export function apply(ctx, config) {
     defineTool({
       name: 'memory_write',
       description:
-        'Write or update one memory entry. Use only for something learned the hard way that would change a future decision — not for a fact one command reveals, and not for what AGENTS.md already states. Reuse the same name to update instead of creating a near-duplicate. Pass `triggers` with synonyms, including Chinese words, so a later message can recall an English entry. `evidence` is required: the exact command or error text that proves the claim.',
+        'Write or update one memory entry. Use only for something learned the hard way that would change a future decision — not for a fact one command reveals, and not for what AGENTS.md already states. Reuse the same name to update instead of creating a near-duplicate. Write the title and body in English whatever language the conversation is in, and pass `triggers` with synonyms including Chinese words, so a later message can recall an English entry. `evidence` is required: the exact command or error text that proves the claim.',
       parameters: {
         type: 'object',
         additionalProperties: false,
@@ -678,7 +678,7 @@ export function apply(ctx, config) {
     defineTool({
       name: 'memory_audit',
       description:
-        'Report notebook entries that need a human re-check: those with no Evidence line, and those not touched in a long time. Age is a proxy for evidence rot — the command recorded in an old entry is the one most likely to no longer hold. Use when the user asks what is stale, or before trusting an entry that looks old.',
+        'Report notebook entries that need a human re-check: those with no Evidence line, those not touched in a long time, and those whose prose is not in the notebook\'s language. Age is a proxy for evidence rot — the command recorded in an old entry is the one most likely to no longer hold. Use when the user asks what is stale, or before trusting an entry that looks old.',
       parameters: {
         type: 'object',
         additionalProperties: false,
@@ -693,7 +693,7 @@ export function apply(ctx, config) {
         schema: {
           type: 'object',
           additionalProperties: false,
-          required: ['total', 'missing_evidence', 'stale', 'index'],
+          required: ['total', 'missing_evidence', 'stale', 'wrong_language', 'index'],
           properties: {
             total: { type: 'number' },
             missing_evidence: { type: 'array', items: { type: 'string' } },
@@ -707,6 +707,11 @@ export function apply(ctx, config) {
                   days: { type: 'number' },
                 },
               },
+            },
+            wrong_language: {
+              type: 'array',
+              items: { type: 'string' },
+              description: 'Entries whose prose is Chinese where the notebook is written in English',
             },
             index: {
               type: 'object',
@@ -731,6 +736,10 @@ export function apply(ctx, config) {
             lines.push('', 'Not touched recently:')
             for (const row of value.stale) lines.push(`  ${row.name} (${row.days}d)`)
           }
+          if (value.wrong_language.length > 0) {
+            lines.push('', 'Written in Chinese, where this notebook is written in English:')
+            for (const name of value.wrong_language) lines.push(`  ${name}`)
+          }
           if (value.index.unlisted.length > 0) {
             lines.push('', 'On disk but missing from INDEX.md:')
             for (const file of value.index.unlisted) lines.push(`  ${file}`)
@@ -742,6 +751,7 @@ export function apply(ctx, config) {
           const clean =
             value.missing_evidence.length === 0 &&
             value.stale.length === 0 &&
+            value.wrong_language.length === 0 &&
             value.index.unlisted.length === 0 &&
             value.index.missing.length === 0
           if (clean) lines.push('', 'Nothing needs a re-check.')
@@ -762,6 +772,7 @@ export function apply(ctx, config) {
             name: entry.key,
             days: Math.floor((now - entry.mtimeMs) / 86_400_000),
           })),
+          wrong_language: report.chineseProse.map((entry) => entry.key),
           index: { unlisted: drift.unlisted, missing: drift.missing },
         }
       },
