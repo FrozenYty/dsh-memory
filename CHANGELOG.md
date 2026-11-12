@@ -7,6 +7,30 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.18.3] — 2026-11-12
+
+### Added
+
+- **The mutation scan goes from 39 to 68.** The first pass covered the fixes; this one covers the
+  machinery the fixes sit on — **tokenising, scoring, selection, rendering, message extraction**. The
+  second batch found **29 mutations and all 29 were killed too**, so the answer did not change, but the
+  evidence is now 68 lines of it instead of 39.
+- **`scripts/assertion-strength.mjs`** — the other half of the question. Mutation scanning asks whether
+  the suite notices a broken line; this asks whether an **assertion is capable of failing at all**.
+  **158 checks parsed, 2 suspicious, both legitimate** (`created === true` where `created` is a boolean).
+
+### Notes
+
+- **The first version of the assertion analyser was wrong** and reported six suspicions that were not
+  there: it took everything up to the closing paren as the condition, so the **third** argument — the
+  failure message — was analysed as if it were the assertion. `?? '(no summary line)'` looked like a
+  masked assertion when it was only the text shown on failure. Splitting arguments by bracket depth
+  fixed it.
+- **A mutation that does not apply is worse than no mutation.** Three of the first batch silently did
+  nothing because the code I quoted from memory was not the code in the file; the scanner reported them
+  as "did not apply", which is the only reason they were noticed. It now reports that count separately
+  and exits non-zero if any fails to apply.
+
 ## [0.18.2] — 2026-11-12
 
 ### Added
@@ -644,7 +668,8 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/dd0dad9...HEAD
+[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/e625477...HEAD
+[0.18.3]: https://github.com/FrozenYty/dsh-memory/commit/e625477
 [0.18.2]: https://github.com/FrozenYty/dsh-memory/commit/dd0dad9
 [0.18.1]: https://github.com/FrozenYty/dsh-memory/commit/20acd20
 [0.18.0]: https://github.com/FrozenYty/dsh-memory/commit/32f2ad8

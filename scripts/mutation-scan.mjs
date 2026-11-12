@@ -74,6 +74,47 @@ const mutations = [
   ['the last-used day stops being tracked', CORE, "if (row.day > (lastDay.get(row.entry) ?? '')) lastDay.set(row.entry, row.day)", ''],
   ['frontmatter stops being parsed', CORE, "const m = raw.match(/^---\\r?\\n([\\s\\S]*?)\\r?\\n---\\r?\\n?/)", 'const m = null'],
   ['triggers stop being split on separators', CORE, '.split(/[,;，、]/)', '.split(/\\n/)'],
+
+  // --- tokenising ----------------------------------------------------------
+  ['a short Chinese run stops being kept whole', CORE, 'if (run.length <= 2) {', 'if (false) {'],
+  ['Latin words of one character are kept', CORE, '} else if (run.length > 1) {', '} else if (run.length > 0) {'],
+  ['the five-character prefix floor disappears', CORE, 'if (token.length < 5) return false', 'if (token.length < 1) return false'],
+  ['prefix matching ignores the candidate length', CORE, 'if (candidate.length >= 5 &&', 'if (candidate.length >= 1 &&'],
+  ['a single Chinese character counts as a whole word', CORE, 'if (text.length < 2) return false', 'if (text.length < 1) return false'],
+
+  // --- scoring -------------------------------------------------------------
+  ['a single-word trigger is worth less', CORE, '      score += 5\n      hits +=', '      score += 3\n      hits +='],
+  ['a multi-word trigger is worth less', CORE, '      score += 7\n      hits += phraseTokens.size', '      score += 5\n      hits += phraseTokens.size'],
+  ['a trigger loses its second hit', CORE, 'hits += identifies || chineseWord || unique ? 2 : 1', 'hits += 1'],
+  ['rarity stops earning the second hit', CORE, 'const unique = rarity !== undefined && rarity.get(token) === 1', 'const unique = false'],
+  ['a whole Chinese word stops earning the second hit', CORE, 'const chineseWord = isWholeChineseWord(phrase)', 'const chineseWord = false'],
+  ['a name match is worth less', CORE, '      score += 4\n      hits += 1', '      score += 2\n      hits += 1'],
+  ['a title match is worth less', CORE, '      score += 3\n      hits += 1', '      score += 1\n      hits += 1'],
+  ['a body match is worth more than a title match', CORE, '      score += 1\n      hits += 1', '      score += 5\n      hits += 1'],
+  ['trigger words tolerate prefixes', CORE, '      if (!queryTokens.has(token)) {', '      if (!tokenMatches(queryTokens, token)) {'],
+  ['a token already covered by a trigger is scored again', CORE, 'if (STOPWORDS.has(token) || covered.has(token)) continue', 'if (STOPWORDS.has(token)) continue'],
+  ['a body-only match counts as strong', CORE, '      score += 1\n      hits += 1\n    }\n  }', '      score += 1\n      hits += 1\n      strong = true\n    }\n  }'],
+  ['rarity stops counting titles', CORE, "for (const token of tokenize(entry.title ?? '')) tokens.add(token)", ''],
+  ['rarity stops counting triggers', CORE, 'for (const phrase of entry.triggers ?? []) for (const token of tokenize(phrase)) tokens.add(token)', ''],
+
+  // --- selection -----------------------------------------------------------
+  ['a disputed entry can be picked', CORE, "    if (entry.status === 'disputed') continue\n    const scored = scoreEntry", '    const scored = scoreEntry'],
+  ['a weak match can be picked', CORE, '    if (!scored.strong) continue\n', ''],
+  ['only one hit is ever returned', CORE, 'return hits.slice(0, Math.max(1, Math.floor(config.maxRecall)))', 'return hits.slice(0, 1)'],
+  ['a hit needs no score floor', CORE, 'if (scored.score < config.minRecallScore) continue', ''],
+
+  // --- messages ------------------------------------------------------------
+  ['only the first block of a message is read', CORE, "if (block && block.type === 'text' && typeof block.text === 'string') text += block.text + ' '", "if (block && block.type === 'text' && typeof block.text === 'string') text = block.text + ' '"],
+  ['the query stops looking at recent turns', CORE, 'const tail = messages.slice(-3)', 'const tail = messages.slice(-1)'],
+
+  // --- rendering -----------------------------------------------------------
+  ['a clamped entry loses its Evidence line', CORE, "const evidence = body.match(/\\nEvidence:[\\s\\S]{0,300}$/)", 'const evidence = null'],
+  ['a clamped entry is not clamped at all', CORE, 'if (body.length <= room) return body', 'return body'],
+  ['verified entries get a label too', CORE, "const label = hit.entry.status === 'verified' ? '' : ` (${hit.entry.status})`", 'const label = ` (${hit.entry.status})`'],
+  ['the recall budget stops being enforced', CORE, 'if (room <= 80) break', 'if (room <= 0) break'],
+
+  // --- audit ---------------------------------------------------------------
+  ['entries age after one day', CORE, 'const staleDays = options.staleDays ?? 90', 'const staleDays = options.staleDays ?? 1'],
 ]
 
 const run = () => {
@@ -129,3 +170,15 @@ for (const r of results) {
   console.log(`  ${mark}  ${r.label}${count}`)
 }
 rmSync(OUT, { force: true })
+
+// A mutation whose `find` text no longer exists tests nothing, and says so only in one line of output.
+// It is the quietest way for this scan to start lying: the count looks healthy while the coverage
+// shrinks. Fail loudly instead.
+if (skipped > 0) {
+  console.error(`\n${skipped} mutation(s) did not apply — their text is not in the source. Fix them; the scan is testing less than it claims.`)
+  process.exit(1)
+}
+if (survivors.length > 0) {
+  console.error(`\n${survivors.length} mutation(s) survived — nothing in the suite notices.`)
+  process.exit(1)
+}
