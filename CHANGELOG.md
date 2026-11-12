@@ -7,6 +7,34 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.16.0] — 2026-11-12
+
+### Changed
+
+- **`memory_usage` counts reads, not only automatic publications.** Turning recall off by default left it
+  frozen: it recorded what a matcher published, and nothing was published any more, so every entry would
+  have read as never used forever — including ones written that same day. `memory_read` now records too.
+- **This is the better signal anyway.** An automatic publication means a matcher fired; a read means the
+  model chose the entry because it needed it. The tool's description now says which it counts, and that a
+  count is sessions reached rather than calls made — a second read of the same entry in one session is
+  not new information.
+
+### Added
+
+- **A test that a read is recorded.** It is the only usage path left now, so it needs to be covered
+  rather than assumed. Three checks: the read returns the entry, the read is logged, and a read of a
+  missing name logs nothing.
+- **`test/fixtures/README.md`**, stating that the fixture notebook is deliberately frozen and that its
+  entry names no longer match the live notebook. Six of them were merged there; the suite asserts
+  against the old names, and a fixture that followed every tidy-up of personal notes would not be a
+  fixture.
+
+### Notes
+
+- **A failed assertion caught a real distinction, not a bug.** The new test initially read
+  `readRows[0].e` and got `{day, entry}` instead — the log stores short keys (`d`, `e`) to keep it small,
+  and `readUsage` maps them to readable ones. Worth knowing before writing another test against that log.
+
 ## [0.15.2] — 2026-11-12
 
 ### Changed
@@ -482,7 +510,9 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/149d357afdc114fd811471c11e87f20e8e95d3c5...HEAD
+[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/96e0283...HEAD
+[0.16.0]: https://github.com/FrozenYty/dsh-memory/commit/96e0283
+[0.15.2]: https://github.com/FrozenYty/dsh-memory/commit/b5607b80887f6c6f3089d9913106ca2666065122
 [0.15.1]: https://github.com/FrozenYty/dsh-memory/commit/149d357afdc114fd811471c11e87f20e8e95d3c5
 [0.15.0]: https://github.com/FrozenYty/dsh-memory/commit/2e95a7ae61e0fb1967605124a5b937208852859d
 [0.14.1]: https://github.com/FrozenYty/dsh-memory/commit/5189f46c93d89299b02f9405114f06454ef95ef0
