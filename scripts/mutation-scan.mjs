@@ -170,3 +170,15 @@ for (const r of results) {
   console.log(`  ${mark}  ${r.label}${count}`)
 }
 rmSync(OUT, { force: true })
+
+// A mutation whose `find` text no longer exists tests nothing, and says so only in one line of output.
+// It is the quietest way for this scan to start lying: the count looks healthy while the coverage
+// shrinks. Fail loudly instead.
+if (skipped > 0) {
+  console.error(`\n${skipped} mutation(s) did not apply — their text is not in the source. Fix them; the scan is testing less than it claims.`)
+  process.exit(1)
+}
+if (survivors.length > 0) {
+  console.error(`\n${survivors.length} mutation(s) survived — nothing in the suite notices.`)
+  process.exit(1)
+}
