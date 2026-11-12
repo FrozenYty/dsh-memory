@@ -3,7 +3,7 @@
 English | [中文](README-zh.md)
 
 **Your notes, visible to the agent.** A directory of markdown files that becomes its memory — no
-embeddings, no server, no model call per turn.
+embeddings, no server, no ranking model. The agent reads the index and decides what to open.
 
 **The honest one-line version:** it makes a curated notebook *visible* to the agent and lets it *write
 back*. It does not reliably *remember for you*. Measured on its own author's notebook, a question
