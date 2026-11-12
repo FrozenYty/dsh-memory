@@ -11,7 +11,7 @@ that changes when the thing it tests does not is not a fixture.
 
 ## Rules
 
-- **Add an entry when a rule needs one.** The tests in `test-core.mjs` name the entries they use; adding
+- **Add an entry when a rule needs one.** The tests in `tests/core.test.mjs` name the entries they use; adding
   a case means adding the entry it needs.
 - **Do not mirror the live notebook into this directory.** Copying it in would import names, ordering and
   phrasing that no test depends on, and every future tidy-up would break the build.

@@ -38,13 +38,13 @@
 
 这里测两件事，第二件就是自动召回默认关闭的原因。
 
-**匹配质量**，在 29 条的笔记本上双向实测，判断集提交在 [`test/qrels.json`](test/qrels.json)：
+**匹配质量**，在 29 条的笔记本上双向实测，判断集提交在 [`tests/qrels.json`](tests/qrels.json)：
 
 | 查询集合 | 结果 |
 |---|---|
 | 用笔记本自己的说法提问 | 52/52 |
 | 盲写的新说法，从处境出发 | 6/18 |
-| `test/qrels.json` 里的无关问题 | 24 条里触发 0 次 |
+| `tests/qrels.json` 里的无关问题 | 24 条里触发 0 次 |
 
 **然后是没人会为自己写的那一组**——只是和笔记本共享了词汇的日常话：
 
@@ -192,7 +192,7 @@ Evidence: `能证明这件事的确切命令或报错原文`
 
 - **所有 `memory_*` 工具都报 `unknown tool`。** 插件没加载起来。几乎总是某个工具 schema 被宿主拒绝——
   宿主在加载时校验 schema，拒绝的是整个插件，不是一个工具。查宿主日志；它执行的规则已经抄进
-  `test-core.mjs` 的 *every tool schema stays inside the host subset* 一节。
+  `tests/core.test.mjs` 的 *every tool schema stays inside the host subset* 一节。
 - **记忆从来不触发。** 先调 `memory_health`。它把"坏了"和"没有匹配上"分开——这两个状态从一个返回空
   的查询里看起来一模一样。如果它说 `ok`，笔记本是好的，问题在词表。
 - **写进去了但索引里没有。** 它超出了 `indexBudgetChars`。`memory_write` 已经在 `indexOverflow`
@@ -202,12 +202,12 @@ Evidence: `能证明这件事的确切命令或报错原文`
 ## 验证
 
 ```sh
-node test-core.mjs                 # 行为检查，零依赖
-node scripts/eval-recall.mjs       # 基于 test/qrels.json 的召回判断
+node tests/core.test.mjs                 # 行为检查，零依赖
+node scripts/eval-recall.mjs       # 基于 tests/qrels.json 的召回判断
 node scripts/check-paths.mjs       # 任何文档里都不出现机器特定路径
 node scripts/check-docs.mjs         # ADR 已登记、语言切换、链接可达
-node scripts/check-evidence.mjs --dir test/fixtures/notebook
-node scripts/check-index.mjs --dir test/fixtures/notebook
+node scripts/check-evidence.mjs --dir tests/fixtures/notebook
+node scripts/check-index.mjs --dir tests/fixtures/notebook
 ```
 
 CI 跑全部这些，挂了就不许合并。覆盖范围：笔记本发现与 `INDEX.md` 排序、索引常驻与计数溢出、空笔记本行为、

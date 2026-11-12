@@ -7,7 +7,7 @@
 <!-- Paste the commands and their result. "The tests pass" is not a result. -->
 
 ```sh
-node test-core.mjs
+node tests/core.test.mjs
 node scripts/check-paths.mjs
 node scripts/check-docs.mjs
 ```

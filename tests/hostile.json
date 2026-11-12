@@ -1,5 +1,5 @@
 {
-  "why": "Ordinary talk that shares vocabulary with the notebook. Any recall here is a false positive, except where marked. This set exists because test/qrels.json's off-topic queries were written by the same author as the triggers, so they avoid the words that misfire; these do not.",
+  "why": "Ordinary talk that shares vocabulary with the notebook. Any recall here is a false positive, except where marked. This set exists because tests/qrels.json's off-topic queries were written by the same author as the triggers, so they avoid the words that misfire; these do not.",
   "reviewed": "2026-11-11",
   "cases": [
     { "query": "帮我重启一下服务", "expect": "silent" },

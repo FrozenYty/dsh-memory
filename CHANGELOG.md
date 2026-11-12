@@ -7,6 +7,59 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.21.0] — 2026-11-12
+
+### Added
+
+**The documentation now meets the standard the sibling project set, and a rule enforces it rather than
+asking.**
+
+- **`docs/INDEX-zh.md`, `docs/architecture-zh.md`** — the Chinese half of the two documents that had
+  only an English one.
+- **`docs/glossary-en-zh.md`** — every term this repository uses in a specific way, with the word it is
+  **not** a synonym for. That column is the point: most of the confusion here came from two words
+  sounding alike — "the injected index" and `INDEX.md`, "recall" for two mechanisms now separate.
+- **`docs/test-plan-en/zh.md`** — the five layers, what each holds, and a section on **what none of it
+  proves**. The worked example from today is in it: 39 mutations reported "39 killed" while two of five
+  fixes had no protection.
+- **`docs/traceability-en/zh.md`** — every accepted ADR and what holds it in place, with **two
+  deliberate gaps named**: decisions that are conventions rather than mechanisms, and guarantees with a
+  known hole. Adding a row to one of those two sections requires writing a sentence about why nothing
+  enforces it — that sentence is what stops "we decided this" being mistaken for "this happens".
+
+### Changed
+
+- **`docs/INDEX-en.md` rewritten** to the sibling project's shape: an authoritative-language statement,
+  an owner and a revisit trigger, a "which one wins" section that now includes the `-en` / `-zh`
+  tie-break, and the coupling table extended with the pairing rule.
+- **`check-docs` gained rule (i): every document under `docs/` is an `-en` / `-zh` pair.** This is the
+  difference between the convention and the guarantee — the convention existed in prose and had already
+  drifted. Verified the way a test is verified: **removing `test-plan-zh.md` makes the rule fail**, and
+  restoring it makes it pass.
+
+### Notes
+
+- **`CHANGELOG.md` and `docs/adr/` remain single-language, deliberately.** A changelog is appended to in
+  order and translating it means maintaining two histories; an ADR's reader is whoever implements next,
+  and that reader's language has nothing to do with the conversation that produced it. Both are stated
+  in `INDEX-en.md` §4 so the exception is a decision rather than an oversight.
+- **The pairing rule caught its own false positive immediately**: `glossary-en-zh.md` also ends in
+  `-zh.md`, so it was reported as an unpaired Chinese file. Excluded by suffix, and verified by its own
+  rule — it must carry a `| 中文 |` column.
+
+## [0.20.0] — 2026-11-12
+
+### Changed
+
+- **`test/` is now `tests/`, and `test-core.mjs` is `tests/core.test.mjs`.** The singular directory was
+  the odd one out: nearly every project calls it `tests/`, and a test file named `test-core.mjs` at the
+  repository root sat beside the source it tests. `git mv` throughout, so history follows.
+- **Path references updated across 20 files** — CI, both READMEs, `AGENTS.md`, `CONTRIBUTING.md`, all
+  scripts, the ADRs that name the judgement set. **`CHANGELOG.md` was deliberately left alone**: it
+  records what was true at the time, and rewriting it would make the past disagree with itself.
+- **`tests/core.test.mjs` removed from `package.json`'s `files`.** It was there before this change — a
+  test file shipped to npm for no reason. Tests are not a deliverable.
+
 ## [0.19.0] — 2026-11-12
 
 ### Added
@@ -214,7 +267,7 @@ one of them was destroying data that another change had just started relying on.
 - **A test that a read is recorded.** It is the only usage path left now, so it needs to be covered
   rather than assumed. Three checks: the read returns the entry, the read is logged, and a read of a
   missing name logs nothing.
-- **`test/fixtures/README.md`**, stating that the fixture notebook is deliberately frozen and that its
+- **`tests/fixtures/README.md`**, stating that the fixture notebook is deliberately frozen and that its
   entry names no longer match the live notebook. Six of them were merged there; the suite asserts
   against the old names, and a fixture that followed every tidy-up of personal notes would not be a
   fixture.
@@ -303,7 +356,7 @@ one of them was destroying data that another change had just started relying on.
 ### Fixed
 
 - **The test fixture's policy still named `dsh-memory-notebook`.** The rename covered `templates/` but
-  not `test/fixtures/`, so the template the plugin seeds from was correct while the copy the tests run
+  not `tests/fixtures/`, so the template the plugin seeds from was correct while the copy the tests run
   against was not. Two copies of one document, one of them updated.
 
 ### Added
@@ -413,7 +466,7 @@ one of them was destroying data that another change had just started relying on.
   table still described truncation; and it said `ctx.tools.register` × 4.
 - **A paragraph interrupted a list in the Matching section**, splitting it in two. It is now one list
   followed by the note.
-- `docs/INDEX-en.md` gained the coupling it was missing: a recall judgement lives in `test/qrels.json`,
+- `docs/INDEX-en.md` gained the coupling it was missing: a recall judgement lives in `tests/qrels.json`,
   and changing one is a reviewed decision rather than a side effect.
 
 ## [0.13.0] — 2026-11-11
@@ -485,7 +538,7 @@ one of them was destroying data that another change had just started relying on.
 
 ### Added
 
-- **A recall judgement set and the tool to run it.** `test/qrels.json` holds 52 statements about what
+- **A recall judgement set and the tool to run it.** `tests/qrels.json` holds 52 statements about what
   the notebook should recall and 24 queries it must ignore, and `scripts/eval-recall.mjs` runs them,
   reporting per-entry reachability and a Wilson interval on each rate. It is an assertion set, not a
   benchmark: a single flipped case fails the run. Without this, a change could move the totals by one
@@ -504,7 +557,7 @@ one of them was destroying data that another change had just started relying on.
 - The fixture notebook grew from 5 entries to 13. A five-entry fixture cannot model false positives
   that appear at twenty, and its recall rate has a confidence interval wide enough to hide a
   regression.
-- The off-topic list in `test-core.mjs` now reads `test/qrels.json`, so the unit tests and the
+- The off-topic list in `test-core.mjs` now reads `tests/qrels.json`, so the unit tests and the
   evaluation cannot drift apart.
 
 ## [0.9.0] — 2026-11-11
@@ -661,7 +714,7 @@ one of them was destroying data that another change had just started relying on.
   arbitrary markdown, so age is the proxy for evidence rot ([ADR 0006](docs/adr/06-evidence-audit-by-age.md)).
 - `memory_verify` now refreshes the entry's `updated` date, so reviewing an entry resets its audit
   age.
-- `test/fixtures/notebook`: a five-entry fixture, so the suite behaves the same locally and in CI.
+- `tests/fixtures/notebook`: a five-entry fixture, so the suite behaves the same locally and in CI.
 
 ### Changed
 

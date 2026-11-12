@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 const here = join(dirname(fileURLToPath(import.meta.url)), '..')
-const src = readFileSync(join(here, 'test-core.mjs'), 'utf8')
+const src = readFileSync(join(here, 'tests', 'core.test.mjs'), 'utf8')
 
 /** Split a call's argument list at top-level commas. */
 function argsOf(text, openIndex) {
@@ -76,7 +76,7 @@ console.log(`suspicious:    ${suspicious.length}`)
 if (suspicious.length > 0) {
   console.log('')
   for (const s of suspicious) {
-    console.log(`  test-core.mjs:${s.line}  [${s.flags.join('; ')}]`)
+    console.log(`  tests/core.test.mjs:${s.line}  [${s.flags.join('; ')}]`)
     console.log(`    ${s.name}`)
     console.log(`    ${s.condition.replace(/\s+/g, ' ').slice(0, 110)}`)
   }

@@ -14,7 +14,7 @@ Measured on a real 29-entry notebook, in both directions at once:
 
 | Query set | Result |
 |---|---|
-| On-topic questions, author-written (`test/qrels.json`) | 52/52, 0 false positives in 24 |
+| On-topic questions, author-written (`tests/qrels.json`) | 52/52, 0 false positives in 24 |
 | New phrasings written from the situation | 6/18 |
 | **Ordinary talk that shares vocabulary with the notebook** | **5/18 fired** |
 

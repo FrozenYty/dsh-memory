@@ -26,7 +26,7 @@ jobs:
           for script in scripts/*.mjs; do node --check "$script"; done
 
       - name: Tests
-        run: node test-core.mjs
+        run: node tests/core.test.mjs
 
       - name: Recall judgements
         run: node scripts/eval-recall.mjs
@@ -38,10 +38,10 @@ jobs:
         run: node scripts/check-docs.mjs
 
       - name: Evidence completeness
-        run: node scripts/check-evidence.mjs --dir test/fixtures/notebook
+        run: node scripts/check-evidence.mjs --dir tests/fixtures/notebook
 
       - name: Index agrees with the directory
-        run: node scripts/check-index.mjs --dir test/fixtures/notebook
+        run: node scripts/check-index.mjs --dir tests/fixtures/notebook
 
       - name: No tool credited as a co-author
         if: github.event_name == 'pull_request'

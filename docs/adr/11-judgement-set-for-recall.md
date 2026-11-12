@@ -25,7 +25,7 @@ reports +7.6pp Recall@5 from adding vector fusion and, in the same paragraph, an
 
 **A written judgement set, asserted case by case, run in CI.**
 
-- `test/qrels.json` states, for 52 queries, which entry must be recalled first, and for 24 off-topic
+- `tests/qrels.json` states, for 52 queries, which entry must be recalled first, and for 24 off-topic
   queries, that nothing may be. Each case is a claim about behaviour, so one flip is a result — not a
   delta to average away.
 - `scripts/eval-recall.mjs` runs them and reports per-entry reachability plus a Wilson interval on
@@ -33,7 +33,7 @@ reports +7.6pp Recall@5 from adding vector fusion and, in the same paragraph, an
   tell us", and at this size the answer is "less than you would like".
 - The fixture notebook grew from 5 to 13 entries, because a fixture smaller than the real corpus
   cannot model its false positives.
-- `test-core.mjs` reads the off-topic list from the same file, so the two suites cannot drift.
+- `tests/core.test.mjs` reads the off-topic list from the same file, so the two suites cannot drift.
 
 ## Consequences
 

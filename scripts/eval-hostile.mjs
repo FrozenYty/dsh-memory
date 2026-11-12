@@ -43,7 +43,7 @@ const cfg = {
   minRecallHits: 2,
 }
 
-const suite = JSON.parse(readFileSync(path.join(repoRoot, 'test', 'hostile.json'), 'utf8'))
+const suite = JSON.parse(readFileSync(path.join(repoRoot, 'tests', 'hostile.json'), 'utf8'))
 const entries = loadNotebook(cfg, '.')
 console.log(`notebook: ${entries.length} entries in ${dir}`)
 console.log(`${suite.cases.length} cases, ${suite.cases.filter((c) => c.expect === 'silent').length} expected silent\n`)
