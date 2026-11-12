@@ -681,6 +681,31 @@ check('disputed entries are not reported as unused', usageReport([{ ...entries[0
 appendFileSync(join(usageDir, USAGE_FILE), '{"d":"2026-01-01","e":"tru', 'utf8')
 check('a half-written line is skipped, not fatal', readUsage(usageDir).length === 2, `${readUsage(usageDir).length}`)
 
+// A log whose last line has no terminator swallows the next record: append puts it on the same line,
+// and one line holding two objects parses as neither. This happened — a tool rewrote the file without
+// newlines and 183 records became one 10KB line, which read as **empty**. The file was intact, the size
+// was intact, and every entry silently looked unused.
+const noNewlineDir = mkdtempSync(join(tmpdir(), 'mn-nonl-'))
+writeFileSync(join(noNewlineDir, USAGE_FILE), '{"d":"2026-01-01","e":"first"}', 'utf8')
+recordUsage(noNewlineDir, 'second')
+check(
+  'a record appended to an unterminated log stays on its own line',
+  readUsage(noNewlineDir).length === 2,
+  `${readUsage(noNewlineDir).length} row(s) from ${JSON.stringify(readFileSync(join(noNewlineDir, USAGE_FILE), 'utf8'))}`,
+)
+
+const gluedDir = mkdtempSync(join(tmpdir(), 'mn-glued-'))
+writeFileSync(
+  join(gluedDir, USAGE_FILE),
+  '{"d":"2026-01-01","e":"first"}{"d":"2026-01-01","e":"second"}{"d":"2026-01-02","e":"third"}',
+  'utf8',
+)
+check(
+  'a line holding several records is split, not discarded',
+  readUsage(gluedDir).length === 3,
+  `${readUsage(gluedDir).length} row(s)`,
+)
+
 // ---------------------------------------------------------------------------
 console.log('\n[17] every tool schema stays inside the host subset')
 // ---------------------------------------------------------------------------

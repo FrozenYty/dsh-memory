@@ -778,7 +778,12 @@ export const USAGE_FILE = 'usage.jsonl'
  */
 export function recordUsage(dir, entryKey) {
   try {
-    appendFileSync(join(dir, USAGE_FILE), `${JSON.stringify({ d: new Date().toISOString().slice(0, 10), e: entryKey })}\n`, 'utf8')
+    const path = join(dir, USAGE_FILE)
+    // The log must end in a newline before another record goes on. Appending to a file that does not
+    // joins the new record to the last line, and a line holding two objects parses as neither — so one
+    // bad write makes the whole log read as empty, not just the record that caused it.
+    if (existsSync(path) && !readFileSync(path, 'utf8').endsWith('\n')) appendFileSync(path, '\n', 'utf8')
+    appendFileSync(path, `${JSON.stringify({ d: new Date().toISOString().slice(0, 10), e: entryKey })}\n`, 'utf8')
     return true
   } catch {
     return false
@@ -796,10 +801,14 @@ export function readUsage(dir) {
     return []
   }
   const rows = []
-  for (const line of text.split(/\r?\n/)) {
-    if (line.length === 0) continue
+  // A single line can hold several records: anything that rewrites the file without a trailing newline
+  // — an editor, a script, `Set-Content -NoNewline` — makes the next append land on the same line.
+  // Splitting them here means a log written wrong still reads right, instead of reporting an intact
+  // 10KB file as no usage at all.
+  for (const piece of text.replace(/\}\s*\{/g, '}\n{').split(/\r?\n/)) {
+    if (piece.length === 0) continue
     try {
-      const row = JSON.parse(line)
+      const row = JSON.parse(piece)
       if (typeof row?.e === 'string') rows.push({ day: String(row.d ?? ''), entry: row.e })
     } catch {
       // A half-written last line is the expected damage; skip it rather than losing the file.

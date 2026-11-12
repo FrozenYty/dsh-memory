@@ -7,6 +7,29 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.17.1] — 2026-11-12
+
+### Fixed
+
+- **A usage log written without a trailing newline read as empty.** Any tool that rewrites a file
+  without newlines — an editor, a script, `Set-Content -NoNewline` — makes the next append land on the
+  same line as the previous record. One line holding two objects parses as neither, so **the whole log
+  returned zero**, not just the damaged record. A 10KB file with 183 records reported `recorded: 0`
+  while every byte of it was intact.
+- **`recordUsage` now terminates the last line before appending**, so it cannot create the condition;
+  **`readUsage` splits several records on one line**, so a log written wrong by something else still
+  reads right. Both are covered by tests that failed before the change: the first reproduces the exact
+  string this repository produced, `{"d":"2026-01-01","e":"first"}{"d":"2026-11-12","e":"second"}`.
+
+### Notes
+
+- **The failure was invisible in every way that usually signals one.** The file existed, its size was
+  correct, writes reported success, and the tool that reads it returned a well-formed empty result. It
+  was found by noticing that `recorded` had gone from 183 to 0 between two calls.
+- **This is the second time a fallback that always succeeds hid a bug.** The first was `summary:` doing
+  nothing while the index rendered fine; here an unreadable log looks exactly like a notebook nobody has
+  used. `memory_usage` reporting zero is now worth reading twice.
+
 ## [0.17.0] — 2026-11-12
 
 ### Changed
