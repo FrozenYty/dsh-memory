@@ -23,6 +23,8 @@ const mutations = [
   // --- the index: what the model sees -------------------------------------
   ['index budget back to 1400', INDEX, 'indexBudgetChars: 2800,', 'indexBudgetChars: 1400,'],
   ['summary length back to 20', INDEX, 'indexSummaryChars: 60,', 'indexSummaryChars: 20,'],
+  ['the evidence limit drops back to 300', INDEX, 'const EVIDENCE_LIMIT = 1000', 'const EVIDENCE_LIMIT = 300'],
+  ['truncation stops being reported', INDEX, 'evidenceTruncated: evidence.length > EVIDENCE_LIMIT,', 'evidenceTruncated: false,'],
   ['a trailing date is no longer stripped', CORE, "const summary = source.replace(/\\s*[—–-]\\s*\\d{4}-\\d{2}-\\d{2}\\s*$/, '').trim()", 'const summary = source.trim()'],
   ['the summary cut ignores word boundaries', CORE, "? `${(summary.slice(0, summaryChars - 1).replace(/\\s+\\S*$/, '') || summary.slice(0, summaryChars - 1)).trimEnd()}…`", "? `${summary.slice(0, summaryChars - 1).trimEnd()}…`"],
   ['the overflow line loses its count', CORE, "return `- … and ${hidden} more, all listed by \\`memory_list\\`\\n`", "return `- …\\n`"],

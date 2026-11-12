@@ -54,6 +54,13 @@ const CONTEXT_ORDER = 4101
 const HINT_NAME = 'memory:capture-hint'
 const HINT_ORDER = 4102
 
+// How much evidence is stored. This was 300, which is less than a command plus its result needs — so the
+// one field whose entire job is to prove a claim was the one being cut, silently, and two entries in the
+// author's own notebook ended mid-word before anyone noticed. 1000 fits a command and its output; a
+// longer one is truncated and *reported*, because an evidence line that has lost its conclusion still
+// reads as complete.
+const EVIDENCE_LIMIT = 1000
+
 const CAPTURE_HINT =
   '<memory-capture-hint>\n' +
   'This conversation is close to being compacted, and a summary will not keep everything. ' +
@@ -451,7 +458,7 @@ export function apply(ctx, config) {
         schema: {
           type: 'object',
           additionalProperties: false,
-          required: ['name', 'operation', 'status', 'indexResident', 'indexOverflow'],
+          required: ['name', 'operation', 'status', 'indexResident', 'indexOverflow', 'evidenceTruncated'],
           properties: {
             name: { type: 'string' },
             operation: { type: 'string' },
@@ -465,6 +472,11 @@ export function apply(ctx, config) {
               description:
                 'Entries now past the index budget because this one took a line. They stay recallable and memory_list names them, but the model cannot see them unprompted.',
             },
+            evidenceTruncated: {
+              type: 'boolean',
+              description:
+                'True when the evidence supplied was longer than the stored limit and was cut. A truncated evidence line no longer proves what it was written to prove, so this is reported rather than hidden.',
+            },
           },
         },
         render: (_args, value) => [
@@ -474,6 +486,9 @@ export function apply(ctx, config) {
               `Memory ${value.operation}: ${value.name}.md [${value.status}]` +
               (value.indexOverflow > 0
                 ? ` — ${value.indexOverflow} other entry(ies) are now past the index budget; memory_health lists them`
+                : '') +
+              (value.evidenceTruncated
+                ? ` — evidence was longer than ${EVIDENCE_LIMIT} characters and was cut; the stored line no longer proves the whole claim`
                 : ''),
           },
         ],
@@ -506,7 +521,7 @@ export function apply(ctx, config) {
           triggers: String(args.triggers ?? ''),
           summary: String(args.summary ?? ''),
           body: String(args.body ?? '').slice(0, 4000),
-          evidence: evidence.slice(0, 300),
+          evidence: evidence.slice(0, EVIDENCE_LIMIT),
         })
         return {
           name: key,
@@ -514,6 +529,7 @@ export function apply(ctx, config) {
           status,
           indexResident: residency.resident,
           indexOverflow: residency.hidden,
+          evidenceTruncated: evidence.length > EVIDENCE_LIMIT,
         }
       },
     }),
