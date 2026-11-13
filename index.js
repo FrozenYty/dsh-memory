@@ -177,6 +177,13 @@ export function apply(ctx, config) {
   const hintedSessions = new Set()
   /** Sessions where the index actually reached the prompt; the health tool reports this. */
   const indexInjected = new Set()
+  /**
+   * The index text each session was given, computed once when the session first assembled a prompt.
+   *
+   * Held here rather than inside the section callback so `session/disposed` can release it: without that
+   * this map keeps a full index string per session for the life of the process.
+   */
+  const indexBySession = new Map()
   /** Entries published by recall per session; the health tool reports this. */
   const recallsBySession = new Map()
 
@@ -203,6 +210,7 @@ export function apply(ctx, config) {
     if (sessionId === undefined) return
     hintedSessions.delete(sessionId)
     indexInjected.delete(sessionId)
+    indexBySession.delete(sessionId)
     recallsBySession.delete(sessionId)
     queryBySession.delete(sessionId)
     recallBySession.delete(sessionId)
@@ -246,18 +254,33 @@ export function apply(ctx, config) {
 
   // --- the resident index: absent entirely when the notebook is empty ---------
   if (cfg.showIndex) {
+    // The index is computed **once per session**, not once per assembly.
+    //
+    // It is a `systemPrompt.section`, so it sits in the prompt prefix: changing one line of it invalidates
+    // the cache for everything after that line, and the conversation behind it is recomputed. A write
+    // changes the index, and no design avoids that — but *where* the change lands is a choice, and the
+    // start of a session is the one place it costs nothing, because a new session has no cache yet.
+    //
+    // So a session's index is a snapshot of the notebook as it was when the session began. An entry
+    // written during the session is absent from it, and that is affordable: the model just wrote it and
+    // has it in the conversation, `recall` matches every entry regardless of the index, `memory_list`
+    // names them all, and `INDEX.md` on disk is updated immediately. What the index is *for* is reminding
+    // a session that has not seen the notebook — the next one.
     ctx.systemPrompt.section({
       name: SECTION_NAME,
       order: SECTION_ORDER,
       text: (context) => {
+        const sessionId = sessionIdOf(context)
+        const cached = sessionId === undefined ? undefined : indexBySession.get(sessionId)
+        if (cached !== undefined) return cached
         const cwd = cwdOf(context)
         seedPolicyOnce(cwd)
         syncIndexOnce(cwd)
         const text = buildIndex(loadNotebook(cfg, cwd), cfg)
         // Recorded, not assumed: the health tool's job is to say whether the index actually reached
         // a prompt, which a configured-but-empty notebook does not.
-        const sessionId = sessionIdOf(context)
         if (text.length > 0 && sessionId !== undefined) indexInjected.add(sessionId)
+        if (sessionId !== undefined) indexBySession.set(sessionId, text)
         return text
       },
     })

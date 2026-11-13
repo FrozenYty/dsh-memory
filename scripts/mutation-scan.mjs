@@ -45,6 +45,21 @@ const mutations = [
     'preserved',
   ],
   ['the budget stops reaching the decision', CORE, 'costOf(preserved) <= budget', 'costOf(preserved) <= 0'],
+  // The per-session index snapshot exists for the prompt cache, so both halves matter: no snapshot at all
+  // (a write mid-session disturbs the prefix) and one snapshot shared by every session (the cache is
+  // perfect and the notebook never reaches a session that has not seen it).
+  [
+    'the index is recomputed for every assembly',
+    INDEX,
+    'const cached = sessionId === undefined ? undefined : indexBySession.get(sessionId)\n        if (cached !== undefined) return cached\n',
+    '',
+  ],
+  [
+    'every session shares one cached index',
+    INDEX,
+    'const cached = sessionId === undefined ? undefined : indexBySession.get(sessionId)',
+    'const cached = indexBySession.get(0)',
+  ],
   // --- the query: what recall matches against -----------------------------
   ['the query is sliced from the front again', CORE, '    const piece = text.slice(-(limit - used))', '    const piece = text.slice(0, limit - used)'],
   ['every message is kept whatever the limit', CORE, 'for (let index = tail.length - 1; index >= 0 && used < limit; index -= 1) {', 'for (let index = tail.length - 1; index >= 0; index -= 1) {'],

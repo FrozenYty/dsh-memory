@@ -1272,6 +1272,41 @@ check(
   multiText.split('\n').filter((l) => l.startsWith('- ')).join(' | '),
 )
 
+// The index is a system-prompt section, so it sits in the cacheable prefix: changing a line of it costs
+// the whole conversation behind that line. A write changes it, unavoidably — but *where* the change lands
+// is a choice, and the start of a session is the only place it is free, because a session that has not
+// been sent yet has no cache to lose. So a session's index is a snapshot from when it began.
+const cacheWs = mkdtempSync(join(tmpdir(), 'mn-selfcache-'))
+writeFileSync(join(cacheWs, 'first.md'), '# First\n\nEvidence: n/a\n', 'utf8')
+let cacheSection
+pluginApply(
+  {
+    systemPrompt: { section: (section) => { cacheSection = section }, context: () => {} },
+    tools: { register: () => () => {} },
+    on: () => () => {},
+    get: () => undefined,
+  },
+  { showIndex: true, workspaceDir: cacheWs, indexBudgetChars: config.indexBudgetChars, indexSummaryChars: config.indexSummaryChars },
+)
+const askFor = (sessionId) => cacheSection.text({ agent: { session: { id: sessionId, header: { cwd: '/' } } } })
+
+const firstRead = askFor('session-one')
+check('the index is rendered for a session that asks', firstRead.includes('first.md'), firstRead.slice(0, 80))
+check('and asking twice in one session returns the same bytes', askFor('session-one') === firstRead)
+// The write lands on disk — the snapshot is of the *prompt*, not of the notebook.
+writeFileSync(join(cacheWs, 'second.md'), '# Second\n\nEvidence: n/a\n', 'utf8')
+check(
+  'an entry written mid-session is kept out of that session\u2019s index',
+  askFor('session-one') === firstRead && !askFor('session-one').includes('second.md'),
+  askFor('session-one').split('\n').filter((l) => l.startsWith('- ')).join(' | '),
+)
+check(
+  'the next session sees it, which is where the change is free',
+  askFor('session-two').includes('second.md'),
+  askFor('session-two').split('\n').filter((l) => l.startsWith('- ')).join(' | '),
+)
+check('a session with no id still gets an index', askFor(undefined).includes('first.md'))
+
 // The date must be the author's calendar day. A suite running in UTC cannot tell the difference, which
 // is exactly how three toISOString() call sites survived: the bug only bites east or west of Greenwich.
 const dateDir = mkdtempSync(join(tmpdir(), 'mn-date-'))

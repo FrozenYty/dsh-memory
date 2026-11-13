@@ -7,6 +7,44 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.23.5] — 2026-11-13
+
+### Changed
+
+**The index is computed once per session and then held.** It is a `systemPrompt.section`, so a changed
+line invalidates the prompt cache for everything after it. A write changes the index and no design avoids
+that — but **where the change lands is a choice**, and the start of a session is the one place it costs
+nothing, because a session that has not been sent yet has no cache to lose.
+
+So a session's index is a snapshot of the notebook from when it began. `0.23.4` removed the *read-induced*
+invalidation; this removes the write-induced one from the session that did the writing.
+
+### The cost, stated plainly
+
+**An entry written during a session does not appear in that session's index.** That is affordable:
+
+- the model just wrote it and has it in the conversation;
+- `recall` matches every entry regardless of the index — the budget has never gated recall;
+- `memory_list` names them all, and `memory_write` reports residency;
+- `INDEX.md` **on disk is updated immediately**, so the notebook a person reads is never stale.
+
+What the index is for is reminding a session that has not seen the notebook. That is the next one, and it
+gets the current file.
+
+### Notes
+
+- **I got this area wrong twice before arriving here.** First I claimed `0.23.4` would reduce write-time
+  invalidation — it could not, since inserting at the top costs what re-ranking costs. Then I said
+  write-time invalidation was *inherent*. It is inherent to the index changing, not to **when** it
+  changes, and that distinction is the whole fix.
+- **The map is released on `session/disposed`**, next to the other per-session state: without that it holds
+  a full index string per session for the life of the process.
+- **Five tests and two mutations**, both halves guarded — no snapshot at all, and one snapshot shared by
+  every session. Removing the cache fails `an entry written mid-session is kept out of that session's
+  index`. `92 mutations, 92 killed, 0 did not apply.`
+- **The cache is still not measured.** Same caveat as `0.23.4`: the reasoning is from the mechanism, and
+  nothing here reads `prompt_cache_hit_tokens`.
+
 ## [0.23.4] — 2026-11-13
 
 ### Changed

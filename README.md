@@ -148,6 +148,12 @@ why the order is recomputed **only once the notebook no longer fits**. Below the
 named regardless of position, so the ranking would decide nothing — and a session that merely read an
 entry would reorder the next session's index for no benefit.
 
+**The index is a snapshot taken when a session begins.** An entry written mid-session is therefore absent
+from that session's index — the one that just wrote it — and present in the next one's. That is where the
+change is free: a session that has not been sent yet has no cache to lose. The entry is not hidden: it is
+in the conversation that wrote it, `recall` matches it, `memory_list` names it, and `INDEX.md` on disk is
+updated immediately.
+
 **What it costs per request**, not per notebook:
 
 | Cost | Value |
