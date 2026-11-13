@@ -469,10 +469,22 @@ const shortWrite = await writeTool.execute(
   { name: 'short-evidence', title: 't', evidence: 'node probe.mjs -> 42 results' },
   evExec,
 )
-check('evidence under the limit is not reported as truncated', shortWrite.evidenceTruncated === false)
+check('evidence under the limit is not reported as truncated', shortWrite.truncated.length === 0)
 const overLimit = 'x'.repeat(1500)
 const longWrite = await writeTool.execute({ name: 'long-evidence', title: 't', evidence: overLimit }, evExec)
-check('evidence over the limit is reported as truncated', longWrite.evidenceTruncated === true)
+check('evidence over the limit is named as truncated', longWrite.truncated.includes('evidence'))
+const longBody = await writeTool.execute({ name: 'long-body', title: 't', evidence: 'e', body: 'y'.repeat(5000) }, evExec)
+check('a body over the limit is named as truncated', longBody.truncated.includes('body'))
+const longTitle = await writeTool.execute({ name: 'long-title', title: 'T'.repeat(300), evidence: 'e' }, evExec)
+check('a title over the limit is named as truncated', longTitle.truncated.includes('title'))
+check(
+  'all three fields are reported together when all three are cut',
+  (await writeTool.execute(
+    { name: 'all-cut', title: 'T'.repeat(300), evidence: 'x'.repeat(1500), body: 'y'.repeat(5000) },
+    evExec,
+  )).truncated.sort().join(',') === 'body,evidence,title',
+)
+check('an entry well inside every limit reports nothing cut', shortWrite.truncated.length === 0)
 const storedLong = scanDir(evDir).find((entry) => entry.key === 'long-evidence')
 check(
   'the stored evidence is cut to exactly the limit',

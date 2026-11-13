@@ -7,6 +7,38 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.23.2] — 2026-11-13
+
+### Changed
+
+**Every field that gets cut is now named in one place.** `title`, `body` and `evidence` all have a
+stored limit, and all three were sliced silently. `memory_write` returns `truncated: ["body"]` instead
+of a per-field boolean, and the rendered text says `stored incomplete: body exceeded the limit and the
+end was cut`.
+
+The list is built from the same constants the slices use, so **a limit and its report cannot drift
+apart** — adding a fourth capped field without a matching entry is the failure this shape is meant to
+prevent.
+
+### Fixed
+
+- **`body.slice(0, 4000)` and `title.slice(0, 120)` were silent, like `evidence` before them.** A cut
+  field keeps its beginning and loses its end, which is usually the conclusion or the fix. **Three
+  instances of one shape in one plugin is a pattern**, and this closes it.
+- **My first version of the report could never fire**: it asked `title.length > TITLE_LIMIT` *after*
+  slicing `title` to `TITLE_LIMIT`, so the answer was always no. The test for it failed on the spot —
+  `a title over the limit is named as truncated`. The length is read before the cut now.
+
+### Notes
+
+- **The mutation scan caught two obsolete mutations while this landed**, both times exiting 1 with
+  *"the scan is testing less than it claims"*. `truncation stops being reported` searched for the
+  `evidenceTruncated` field this change replaced; the earlier one searched for a budget default an
+  earlier change replaced. **That check has now earned its place twice in one session** — both times on
+  the change that broke it, and neither time by review.
+- **Five tests** cover the report, including all three fields cut at once. **Six mutations** guard it,
+  one per field plus the ordering mistake above. **88 mutations, 88 killed, 0 did not apply.**
+
 ## [0.23.1] — 2026-11-13
 
 ### Fixed
@@ -943,8 +975,9 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/3c3feaa...HEAD
-[0.23.1]: https://github.com/FrozenYty/dsh-memory/commit/3c3feaa
+[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/e8514fc...HEAD
+[0.23.2]: https://github.com/FrozenYty/dsh-memory/commit/e8514fc
+[0.23.1]: https://github.com/FrozenYty/dsh-memory/commit/9507ea5
 [0.23.0]: https://github.com/FrozenYty/dsh-memory/commit/a7f7f60
 [0.22.1]: https://github.com/FrozenYty/dsh-memory/commit/7ffde2f
 [0.22.0]: https://github.com/FrozenYty/dsh-memory/commit/0b943ce
