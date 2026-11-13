@@ -7,6 +7,32 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.23.6] — 2026-11-14
+
+### Added
+
+**ADR 0018 — an injected prompt value may change only at session start, where no cache exists yet.**
+
+The property `0.23.4` and `0.23.5` established was held up by three separate pieces of code: one
+condition in `syncIndexFile`, one snapshot map in `index.js`, and DSH's own "commit a snapshot only when
+it differs". **Nothing stated it as a rule, so nothing would have survived a well-meaning simplification
+of any one of them.** It is now one document with a question to check a future change against:
+
+> Would this make bytes that have already been sent come out different?
+
+It also records **two claims I made and then had to withdraw** — that stopping the re-rank would reduce
+write-time invalidation (it could not), and that write-time invalidation was inherent (it is inherent to
+the index *changing*, not to *when*). Both are one mistake: a prefix cache constrains the cost of a
+change, never the choice of when to make it.
+
+### Changed
+
+- **`recallEnabled` has a second reason to stay off**, now documented beside the first. The recall text is
+  re-evaluated per step, so a turn whose match changes replaces the runtime-context message and
+  invalidates the cache behind it. Previously the row named only the false-positive rate.
+- **`docs/INDEX-{en,zh}.md` list 0018.** `check-docs` rule (a) caught the omission, which is what it is
+  for.
+
 ## [0.23.5] — 2026-11-13
 
 ### Changed

@@ -76,5 +76,6 @@
 | [0015](adr/15-recall-is-model-driven-by-default.md) | 默认由模型主动读取，不做自动召回 | Accepted |
 | [0016](adr/16-index-carries-summaries.md) | 索引每行携带一句摘要 | Accepted |
 | [0017](adr/17-index-order-from-use.md) | 索引顺序按信任状态和使用的新近程度排名 | Accepted |
+| [0018](adr/18-prompt-changes-only-where-nothing-is-cached.md) | 注入 prompt 的值只允许在会话开始时变化，那时还没有缓存 | Accepted |
 
 新增 ADR 时在这里加一行。硬盘上存在但没列进这张表的 ADR 会让 `scripts/check-docs.mjs` 失败。

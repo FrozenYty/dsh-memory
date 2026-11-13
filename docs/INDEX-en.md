@@ -95,6 +95,7 @@ else.
 | [0015](adr/15-recall-is-model-driven-by-default.md) | Recall is model-driven by default | Accepted |
 | [0016](adr/16-index-carries-summaries.md) | The index carries a one-line summary per entry | Accepted |
 | [0017](adr/17-index-order-from-use.md) | The index order is ranked from trust status and recency of use | Accepted |
+| [0018](adr/18-prompt-changes-only-where-nothing-is-cached.md) | An injected prompt value may change only at session start, where no cache exists yet | Accepted |
 
 Add a row here whenever an ADR is added. `scripts/check-docs.mjs` fails the build when an ADR
 exists on disk but is not listed in this table.

@@ -111,7 +111,7 @@ dsh plugin --profile <profile> add <path-to-this-checkout>
 | `showIndex` | `true` | 是否注入文件名索引。 |
 | `indexBudgetChars` | `9000` | 索引里**列出多少条**的上限，不是笔记本能存多少条。超出的部分被计数，仍然可被召回。 |
 | `indexSummaryChars` | `60` | 索引每行摘要的字符数。`0` 退回纯文件名——条目更多，每条信息更少。 |
-| `recallEnabled` | `false` | 是否为这一轮发布匹配到的条目。默认关闭：词法匹配分不清"证书错误"和"证书考试"。 |
+| `recallEnabled` | `false` | 是否为这一轮发布匹配到的条目。默认关闭有两个理由：词法匹配分不清"证书错误"和"证书考试"；而且发布的文本每步都会重算，某一轮匹配结果变了就会替换那条运行时上下文消息，它后面的缓存随之失效（[ADR 0018](docs/adr/18-prompt-changes-only-where-nothing-is-cached.md)）。 |
 | `recallBudgetChars` | `1400` | 单次召回发布的字符上限。 |
 | `maxRecall` | `2` | 一条消息最多发布几条。 |
 | `minRecallScore` | `4` | 加权分下限（触发短语 5–7、文件名 4、标题 3、正文 1）。 |
