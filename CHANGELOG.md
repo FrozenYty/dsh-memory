@@ -7,6 +7,37 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.23.3] — 2026-11-13
+
+### Changed
+
+**Both READMEs rewritten to the shape the sibling plugins use.** `dsh-cleaner` and `dsh-search` both
+open with badges, a one-line claim set as a quotation, and a **Status** section that reports what was
+actually exercised — and this one had none of that scaffolding. The content here was already honest; it
+was arranged so that a reader had to take it on trust rather than being shown the evidence first.
+
+What is new:
+
+- **Badges** — CI, licence, no dependencies, no build step, supported Node.
+- **A Status section with real numbers.** 48 entries and 236 recorded reads between 2026-11-11 and
+  2026-11-13, **taken from the plugin's own `usage.jsonl`** rather than asserted, plus the three silent
+  defects its own gates found in one session and the two things still not covered.
+- **A FAQ** replacing the flat "When it goes wrong" list, including the question the measurements below
+  it exist to answer: *does it remember for me?* No.
+- **A document table** with a question per row, and the claim set as `> A well-indexed notebook the agent
+  can see — not a service that remembers on your behalf.`
+
+**Nothing was cut.** Every measurement, the comparison table, the trigger guidance and the accepted
+limits are all still here; the file grew by ten lines while gaining three sections.
+
+### Notes
+
+- **The honest half was already the strongest part.** "One time in five" and the 5/18 false-positive table
+  are the reason to trust the rest, and both plugins' Status sections are the same move: **show the
+  rehearsal, not the claim.** This README now leads with that instead of burying it at line 47.
+- **`check-docs` rule (b) verifies the two READMEs link to each other, not that they match.** They were
+  rewritten in one pass for that reason; a Chinese half drifting behind is invisible to every check here.
+
 ## [0.23.2] — 2026-11-13
 
 ### Changed

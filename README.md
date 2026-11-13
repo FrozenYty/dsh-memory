@@ -2,53 +2,66 @@
 
 English | [中文](README-zh.md)
 
-**Your notes, visible to the agent.** A directory of markdown files that becomes its memory — no
-embeddings, no server, no ranking model. The agent reads the index and decides what to open.
+[![ci](https://github.com/FrozenYty/dsh-memory/actions/workflows/ci.yml/badge.svg)](https://github.com/FrozenYty/dsh-memory/actions/workflows/ci.yml)
+![license](https://img.shields.io/badge/license-MIT-blue)
+![dependencies](https://img.shields.io/badge/dependencies-none-brightgreen)
+![build step](https://img.shields.io/badge/build-none-brightgreen)
+![node](https://img.shields.io/badge/node-%5E22.19%20%7C%7C%20%3E%3D24-brightgreen)
 
-**The honest one-line version:** it makes a curated notebook *visible* to the agent and lets it *write
-back*. It does not reliably *remember for you*. Measured on its own author's notebook, a question
-phrased in words the notebook does not already contain recalls the right entry about **one time in
-five**. Read [How well it works](#how-well-it-works) before installing — it is the part most memory
-projects leave out.
+> A well-indexed notebook the agent can see — not a service that remembers on your behalf.
 
-## The problem
+A DeepSeek Harness profile bundle that turns a directory of markdown files into the agent's memory: an
+index in the system prompt, one file per subject, and seven tools to read, write and audit it. No
+embeddings, no server, no model call on the read path. An empty notebook costs zero bytes.
 
-An agent session starts blank. Everything learned the hard way — a toolchain that fails on long paths,
-a driver that lies about its settings, an installer that silently writes to the wrong environment — is
-re-learned next time, at the same cost.
+[github.com/FrozenYty/dsh-memory](https://github.com/FrozenYty/dsh-memory)
 
-The existing answers trade one problem for another:
+## Status
 
-- **Vector stores and memory servers** rank well but add a service, an index to keep in sync, and a
-  store the agent cannot `git diff`.
-- **Notes plus an instruction file** stay legible, but nothing makes the agent read them at the moment
-  it matters. A good notebook nobody opens is a well-organised loss.
+- Current version: v0.23.2.
+- **In daily use, on the notebook it was written for.** 48 entries and 236 recorded reads between
+  2026-11-11 and 2026-11-13. Both numbers come from the plugin's own `usage.jsonl`, so they are a record
+  rather than a claim.
+- **Three silent defects were found and fixed by its own gates in one session**: every evidence line was
+  being cut to 300 characters, a long pasted message evicted the current request from the recall query,
+  and the index order could never let a new entry climb past an old one. Each is now a test and a
+  mutation — see [CHANGELOG.md](CHANGELOG.md).
+- **Not covered**: a notebook big enough to overflow the index (the counted-overflow path is
+  fixture-tested, never exercised on real data), and any Harness build other than the installed one.
+- Release list: [CHANGELOG.md](CHANGELOG.md). Design and tradeoffs:
+  [docs/architecture-en.md](docs/architecture-en.md). Decisions: [the ADRs](docs/adr/). Recall
+  measurements: [`tests/qrels.json`](tests/qrels.json).
 
-This plugin takes the second shape and fixes two things: *when to look*, and *when to write*.
+## The contract
 
-## What it does
+An agent session starts blank. Everything learned the hard way — a toolchain that fails on long paths, a
+driver that lies about its settings, an installer that silently writes to the wrong environment — is
+re-learned next time at the same cost.
+
+The existing answers trade one problem for another. **Vector stores and memory servers** rank well but add
+a service, an index to keep in sync, and a store you cannot `git diff`. **Notes plus an instruction
+file** stay legible, but nothing makes the agent read them at the moment it matters.
+
+This plugin takes the second shape and fixes two things: **when to look**, and **when to write**.
 
 1. **A resident index.** Each entry appears as its filename plus a one-line summary, clipped to a fixed
    length. The summary is what lets the model decide whether reading is worth a call — a filename can
-   start a read, it cannot prevent one. An empty notebook injects **zero bytes** — the section
-   disappears entirely.
-2. **The model reads what it needs.** The index header tells it to call `memory_read` when a name
-   matches what it is about to do. **Nothing is injected automatically** — see
-   [How well it works](#how-well-it-works) for the measurements behind that, and `recallEnabled` to
-   opt into automatic matching instead.
-3. **Seven tools** to read, write, verify, audit, diagnose and account for entries — with evidence
-   required on every write.
+   start a read, it cannot prevent one. An empty notebook injects **zero bytes**.
+2. **The model reads what it needs.** The index header tells it to call `memory_read` when a name matches
+   what it is about to do. **Nothing is injected automatically** — the measurements below are the reason,
+   and `recallEnabled` opts into automatic matching instead.
+3. **Seven tools** to read, write, verify, audit, diagnose and account for entries, with evidence required
+   on every write.
 
-The notebook itself is ordinary markdown: one file per subject, an optional `INDEX.md` fixing their
-order, optional frontmatter, and one entry that states the rules for writing into it. That policy
-**ships with the plugin** and is seeded into any notebook that lacks one, never overwriting an edited
-copy. [docs/architecture-en.md](docs/architecture-en.md) explains why the parts are arranged this way.
+The notebook is ordinary markdown: one file per subject, an optional `INDEX.md` fixing their order,
+optional frontmatter, and one entry stating the rules for writing into it. That policy **ships with the
+plugin** and is seeded into any notebook that lacks one, never overwriting an edited copy.
 
 ## How well it works
 
-Two things are measured here, and the second one is why automatic recall is off by default.
+Two things are measured, and the second is why automatic recall is off by default.
 
-**Matching quality**, on a 29-entry notebook, both directions at once, with the judged set committed in
+**Matching quality**, on a 29-entry notebook, both directions at once, judged set committed in
 [`tests/qrels.json`](tests/qrels.json):
 
 | Query set | Result |
@@ -57,8 +70,7 @@ Two things are measured here, and the second one is why automatic recall is off 
 | New phrasings, written from the situation | 6/18 |
 | Off-topic queries in `tests/qrels.json` | 0/24 fired |
 
-**And then the set nobody writes for themselves** — ordinary talk that merely shares vocabulary with the
-notebook:
+**And then the set nobody writes for themselves** — ordinary talk that merely shares vocabulary:
 
 | Typed | What it pulled in |
 |---|---|
@@ -67,12 +79,12 @@ notebook:
 | there are a lot of plugins | two plugin entries, from a remark about nothing |
 | **Ordinary talk sharing vocabulary** | **5/18 fired** |
 
-The measured set was written in Chinese; the phrasings above are its English equivalents. The failure
-is not language-specific — one word covering two senses is enough — but the tokeniser grants a lone
-Chinese word of two characters the weight of two hits, which is what made it fire so readily there.
+The measured set was written in Chinese; the phrasings above are its English equivalents. The failure is
+not language-specific — one word covering two senses is enough — but the tokeniser grants a lone Chinese
+word of two characters the weight of two hits, which is what made it fire so readily there.
 
-The 24 clean queries in `qrels.json` were written by the same person who wrote the triggers, which is
-exactly why they are clean. The hostile set was not.
+The 24 clean queries were written by the same person who wrote the triggers, which is exactly why they
+are clean. The hostile set was not.
 
 **Raising the gate does not separate them.** Correct recalls and false positives both score 4–5, and
 lifting the floor to 6 costs four of six correct recalls to remove four of five false positives:
@@ -88,45 +100,13 @@ score | recall | false positives
 So the default is what Claude Code does: **the index names every entry, and the model reads one when a
 name matches.** No matcher, no false positives.
 
-When it does match, it is lexical: it compares words. Describe a problem in terms the entry already
-uses and it fires; describe the *symptom* while the entry records the *mechanism* — you say "the photos
-come out black", the entry says "black frame" — and it does not. That is the limit `recallEnabled: true`
+When it does match, it is lexical: it compares words. Describe a problem in terms the entry already uses
+and it fires; describe the *symptom* while the entry records the *mechanism* — you say "the photos come
+out black", the entry says "black frame" — and it does not. That is the limit `recallEnabled: true`
 inherits.
 
-So the useful mental model is **a well-indexed notebook the agent can see and open**, not an assistant
-that remembers on your behalf. What it does reliably is never get in the way: zero false recalls, zero
-background work, zero model calls on the read path.
-
-If you want it to actually find things, write triggers in the words you complain in, not the words a
-manual would use. That is the single highest-leverage thing you can do.
-
-## How it compares
-
-From a 2026 survey of the field, reading each project's source and issue tracker rather than its
-promotional material:
-
-| | this | Claude Code | engramory | OKF agent memory | EverOS |
-|---|---|---|---|---|---|
-| dependencies | none | n/a | Python scripts | Go binary | service + LLM key |
-| model calls on read path | none | none | none | none | yes |
-| provenance required | **yes** (`Evidence:`) | no | **no** | optional | recorded |
-| trust states | **yes** | no | **no** | OKF tiers | yes |
-| aging / audit | **yes** | no | **no** | `stale_after` | yes |
-| automatic recall | yes (~20% on new phrasings) | **no** | **no** | codex + index | yes |
-| index cap enforcement | no (counted overflow) | warns | **yes** | scorecard | n/a |
-
-Claude Code's auto-memory is the closest in *shape* — index of filenames, one file per subject, detail
-opened on demand. It deliberately does **no matching at all**: the model reads names and decides. This
-plugin adds matching on top, which is a genuine convenience and a genuinely weak one.
-
-`engramory` shares the shape and adds enforcement this lacks (a hard index cap, multi-host sharing).
-It also documents its own gaps, which are this plugin's strengths: no provenance, no trust states, no
-aging.
-
-One finding worth more than any mechanism: **every published benchmark in this field that I checked
-failed checking** — one project reports +7.6pp recall while its own answer-replay numbers move by one
-case, another's headline figure appears in no file in its repository. Measure on your own corpus. The
-judgement set shipped here is small, honest, and about the case that matters.
+**If you want it to actually find things, write triggers in the words you complain in, not the words a
+manual would use.** That is the single highest-leverage thing you can do.
 
 ## Install
 
@@ -138,16 +118,16 @@ A first install activates through hot reload. Replacing an already-installed cop
 
 ## Configure
 
-Set values under the `memory` row in the profile's `cordis.patch.yml`. This bundle declares no
-`Config` schema, so values are taken as given; the defaults below are applied in code.
+Set values under the `memory` row in the profile's `cordis.patch.yml`. This bundle declares no `Config`
+schema, so values are taken as given; the defaults below are applied in code.
 
 | Key | Default | Meaning |
 |---|---|---|
 | `workspaceDir` | `.agents/memory` | Notebook directory, relative to the session working directory. `''` disables this tier. |
 | `machineDir` | `''` | Optional machine-wide tier, absolute or `~`-prefixed. The workspace tier wins name collisions. |
 | `showIndex` | `true` | Inject the filename index. |
-| `indexBudgetChars` | `9000` | Ceiling on how many entries are **named** in the index, not on how many the notebook may hold. Entries past it are counted in the index and stay recallable. |
-| `indexSummaryChars` | `60` | Characters of summary per index line, after the filename. `0` falls back to bare filenames — more entries, less information about each. |
+| `indexBudgetChars` | `9000` | Ceiling on how many entries are **named** in the index, not on how many the notebook may hold. Entries past it are counted and stay recallable. |
+| `indexSummaryChars` | `60` | Characters of summary per index line. `0` falls back to bare filenames — more entries, less about each. |
 | `recallEnabled` | `false` | Publish a matching entry for the turn. Off by default: a lexical matcher cannot tell "certificate error" from "certificate exam". |
 | `recallBudgetChars` | `1400` | Ceiling on one recall publication. |
 | `maxRecall` | `2` | Maximum entries published for one message. |
@@ -157,9 +137,22 @@ Set values under the `memory` row in the profile's `cordis.patch.yml`. This bund
 | `skipAcknowledgements` | `true` | Ignore messages that are only an acknowledgement. |
 | `captureHintRatio` | `0.6` | Context-window fraction at which the one-shot "save what matters" hint appears. `0` disables it. |
 
+**The budget is a dial, not a ceiling.** It caps what is *resident* — how many entries the model can see
+without asking — never what the notebook can hold. Entries past it are counted in the index, stay
+callable, and `memory_list` names them. See [ADR 0014](docs/adr/14-index-budget-is-residency.md).
+
+**What it costs per request**, not per notebook:
+
+| Cost | Value |
+|---|---|
+| Index line | ~89 characters, ~24 tokens |
+| Index at the default budget | ~9000 characters, ~2500 tokens, about 100 entries |
+| Empty notebook | 0 bytes |
+| Embeddings, model calls on the read path, background consolidation | none |
+
 ## Write an entry
 
-One file per subject. Frontmatter is optional; `INDEX.md` only fixes ordering.
+One file per subject. Frontmatter is optional; `INDEX.md` only fixes order.
 
 ```markdown
 ---
@@ -175,23 +168,23 @@ Evidence: `exact command or error text that proves it`
 ```
 
 - **`triggers`** is the recall vocabulary, and it decides whether the entry is ever found. Write the
-  words **you would actually type**, not the words a manual would use:
+  words **you would actually type**:
 
   | you would type | do not list only |
   |---|---|
   | it broke when I moved to another machine | forwarding, absolute path, drive letter |
   | the browser works but the command does not | curl, tls, schannel |
   | the photos come out black | black frame, white balance |
-  | why did it not remember | trigger, recall rate |
 
-  Multi-word phrases count as a phrase and match only when every word appears — keep them specific
-  (`dotnet pipe denied`, not `denied`). Avoid a **single generic word** (`configuration`, `permission`,
-  `restart`): once it pairs with any second hit it drags the entry into unrelated messages. Never use a
-  single character of a CJK script — it cannot earn the second hit that makes a match.
-- **`status`** is `candidate` (default), `verified`, or `disputed`. Disputed entries are never indexed
-  and never recalled.
-- **`Evidence:`** is required when writing through `memory_write`. A clamped recall keeps that line
-  rather than dropping it — an entry without its evidence reads as an unverifiable claim.
+  Multi-word phrases match only when every word appears — keep them specific (`dotnet pipe denied`, not
+  `denied`). Avoid a **single generic word** (`configuration`, `permission`, `restart`): once it pairs
+  with any second hit it drags the entry into unrelated messages. Never use a single character of a CJK
+  script — it cannot earn the second hit that makes a match.
+- **`status`** is `candidate` (default), `verified`, or `disputed`. Disputed entries are never indexed and
+  never recalled.
+- **`Evidence:`** is required when writing through `memory_write`. It must prove the claim **on its own**:
+  the command, what went in, and what came back all belong in the line, so whoever opens the file next
+  does not need another file to still exist. "See `probe.py`" is not evidence — the output is.
 
 ## Tools
 
@@ -199,86 +192,103 @@ Evidence: `exact command or error text that proves it`
 |---|---|
 | `memory_list` | Names, trust statuses and titles — including entries past the index budget. |
 | `memory_read` | One entry in full. |
-| `memory_write` | Create or update; `evidence` required. Reports whether the entry is resident in the index. |
+| `memory_write` | Create or update; `evidence` required. Reports whether the entry is resident, and names any field it had to cut. |
 | `memory_verify` | Promote to `verified`, or retire to `disputed`. |
-| `memory_audit` | No `Evidence:`, untouched for long, `INDEX.md` drift in either direction. |
+| `memory_audit` | No `Evidence:`, untouched for long, prose not in English, `INDEX.md` drift in either direction. |
 | `memory_health` | Whether memory is broken or merely had nothing to say: `ok`, `degraded`, `broken`, `absent`, `unconfigured`. |
-| `memory_usage` | Which entries recall has ever published, and which it never has. Entry names and dates only — never the query. |
+| `memory_usage` | Which entries were ever read, and which never were. Entry names and dates only — never the query. |
 
-## Why it is cheap
+## What it never does
 
-Per entry, not per notebook — the totals scale but the rates do not:
+- **Never calls a model or a service on the read path.** The index is computed from the filesystem; recall
+  is a word comparison; both are pure functions of what is on disk.
+- **Never writes without evidence.** `memory_write` refuses an empty one, and a clamped recall keeps the
+  `Evidence:` line rather than dropping it — an entry without its evidence reads as an unverifiable claim.
+- **Never executes a recorded command.** `memory_audit` checks age and completeness, never runs anything: a
+  notebook is arbitrary markdown, and a checker that ran what it found would be an arbitrary-code surface.
+- **Never rewrites an edited policy.** It seeds one into a notebook that lacks it, by exclusive create, and
+  leaves an edited copy alone.
+- **Never records what you searched for.** `usage.jsonl` holds a date and an entry name. No query text, no
+  session id, no path.
+- **Never loses an entry to the budget.** Over-budget entries are counted in the index and stay reachable
+  by every tool.
 
-| Cost | Value |
-|---|---|
-| Index line, per request | ~34 characters, ~10 tokens |
-| One recall publication | at most `recallBudgetChars`, ~390 tokens at the default |
-| Empty notebook | 0 bytes |
-| Embeddings / model calls on the read path | none |
-| Background consolidation | none |
+## Questions
 
-The budget is a **dial, not a ceiling**. 1400 characters is roughly 34 resident entries; 700 is
-roughly 10. Capacity is unbounded either way: entries past the budget are counted in the index, stay
-recallable, and are listed by `memory_list`. See
-[ADR 0014](docs/adr/14-index-budget-is-residency.md).
+**Every `memory_*` tool reports `unknown tool`.**
+The plugin failed to load. Almost always a schema the host rejects — the host validates tool schemas while
+loading and rejects the whole plugin, not one tool. Check the host log; the rules it enforces are copied
+into `tests/core.test.mjs` under *every tool schema stays inside the host subset*.
 
-## When it goes wrong
+**Memory never fires.**
+Call `memory_health` first. It separates "broken" from "nothing matched" — two states that look identical
+from a query that returned nothing. If it says `ok`, the notebook is fine and the vocabulary is the
+problem.
 
-- **Every `memory_*` tool reports `unknown tool`.** The plugin failed to load. Almost always a schema
-  the host rejects — the host validates tool schemas while loading and rejects the whole plugin, not
-  one tool. Check the host log; the rules it enforces are copied into `tests/core.test.mjs` under
-  *every tool schema stays inside the host subset*.
-- **Memory never fires.** Call `memory_health` first. It separates "broken" from "nothing matched" —
-  the two states that look identical from a query that returned nothing. If it says `ok`, the notebook
-  is fine and the vocabulary is the problem.
-- **An entry was written but is not in the index.** It is past `indexBudgetChars`. `memory_write`
-  said so in its `indexOverflow`; `memory_usage` will show whether anything ever reads it.
-- **Memory stops being saved.** The notebook directory is not writable. `memory_health` reports that
-  specifically — it is the failure that looks like everything working.
+**An entry was written but is not in the index.**
+It is past `indexBudgetChars`. `memory_write` said so in its `indexOverflow`; `memory_usage` shows whether
+anything ever reads it.
 
-## Verified
+**Memory stops being saved.**
+The notebook directory is not writable. `memory_health` reports that specifically — it is the failure that
+looks like everything working.
+
+**Does it remember for me?**
+No. It makes a curated notebook visible and lets the agent write back; the measurements above say why
+automatic recall is off. The useful mental model is a well-indexed notebook, not an assistant.
+
+**Why does the index order change on its own?**
+It is ranked on every sync from trust status and how recently an entry was read, so the entries that
+earned their place stay in front and a new one still gets its chance. Hand-editing `INDEX.md` is pointless
+by design — see [ADR 0017](docs/adr/17-index-order-from-use.md).
+
+## Limits this design accepts
+
+- **Lexical matching, and it is the binding limit.** Around one question in five finds the right entry when
+  phrased in words the notebook does not contain. Deliberate: the alternative costs a service or a model
+  call per turn, and the published evidence that either buys answer quality does not hold up. The fix is
+  vocabulary, not algorithm.
+- **Nothing is captured automatically.** Closure is the model deciding to call `memory_write`. A one-shot
+  hint before compaction nudges it; that is not raw event capture and is not claimed to be.
+- **No visible "context injected" row.** A profile-linked bundle cannot import `@deepseek-ai/*` packages
+  ([ADR 0001](docs/adr/01-zero-dependency-host-half.md)), so recall rides the runtime-context channel. The
+  benefit: nothing enters the session log and the injection survives compaction.
+- **`verified` is not enforced.** Anything the model writes is `candidate` until something promotes it, and
+  the model can promote its own entry. It is a signal, not proof of human review.
+- **No cross-workspace tier by default.** `machineDir` exists for it; off unless configured.
+
+## Verify
 
 ```sh
-node tests/core.test.mjs                 # behavioural checks, no dependencies
-node scripts/eval-recall.mjs       # recall judgements over tests/qrels.json
-node scripts/check-paths.mjs       # no machine-specific paths in any document
-node scripts/check-docs.mjs         # ADRs listed, language switchers, links resolve
+node tests/core.test.mjs                    # behavioural checks, no dependencies
+node scripts/mutation-scan.mjs              # 88 mutations, each must be killed
+node scripts/eval-recall.mjs                # recall judgements over tests/qrels.json
+node scripts/check-docs.mjs                 # ADRs listed, links, language pairs, locale keys, version
+node scripts/check-paths.mjs                # no machine-specific paths in any document
 node scripts/check-evidence.mjs --dir tests/fixtures/notebook
 node scripts/check-index.mjs --dir tests/fixtures/notebook
 ```
 
-CI runs all of them and blocks a merge. The suite covers discovery and `INDEX.md` ordering, index
-residency and counted overflow, empty-notebook behaviour, Latin and CJK tokenising including glued
-mixed script, the acknowledgement gate, recall in both languages, whole-phrase and rarity-weighted
-matching, trust-status transitions, disputed entries disappearing from index and recall, evidence
-completeness and aging, usage accounting, capability diagnostics, host-API guarding, and the host's own
-tool-schema rules.
+CI runs all of them and blocks a merge. **The mutation scan is not decoration**: it breaks each
+load-bearing line in turn and requires a test to fail, and it exits non-zero if a mutation no longer
+applies — *a scanner testing less than it claims is the quietest way to lie.*
 
-## Limits this design accepts
-
-- **Lexical matching, and it is the binding limit.** Around one question in five finds the right entry
-  when phrased in words the notebook does not contain. Deliberate: the alternative costs a service or a
-  model call per turn, and the published evidence that either buys answer quality does not hold up.
-  The fix is vocabulary, not algorithm — see [Write an entry](#write-an-entry).
-- **Nothing is captured automatically.** Closure is the model deciding to call `memory_write`. A
-  one-shot hint before compaction nudges it; that is not the same as capturing raw events, and it is
-  not claimed to be.
-- **No visible "context injected" row.** A profile-linked bundle cannot import `@deepseek-ai/*`
-  packages ([ADR 0001](docs/adr/01-zero-dependency-host-half.md)), so recall rides the runtime-context
-  channel instead of a synthetic user message. The benefit: nothing enters the session log and the
-  injection survives compaction.
-- **No cross-workspace tier by default.** `machineDir` exists for it; off unless configured, and the
-  workspace tier wins name collisions.
-- **`verified` is not enforced.** Anything the model writes is `candidate` until something promotes it,
-  and the model can promote its own entry. It is a signal, not a proof of human review.
+A passing local run proves less than it looks: `node --check` is not a type check, and the document checks
+never look at JavaScript.
 
 ## Documents
 
-- [docs/INDEX-en.md](docs/INDEX-en.md) — the map: what answers which question.
-- [docs/architecture-en.md](docs/architecture-en.md) — the design and its tradeoffs.
-- [docs/adr/](docs/adr/) — decisions expensive to reverse, one file each.
-- [CONTRIBUTING.md](CONTRIBUTING.md) — branching, commits, what CI checks.
-- [AGENTS.md](AGENTS.md) — rules for AI assistants working here.
+| Question | Document |
+|---|---|
+| What does it promise, and how do I install it? | this README |
+| How is it built, and what are the tradeoffs? | [docs/architecture-en.md](docs/architecture-en.md) |
+| Why was a decision made the way it is? | [docs/adr/](docs/adr/) — one file per decision |
+| Which test holds which decision in place? | [docs/traceability-en.md](docs/traceability-en.md) |
+| What do the tests cover, and what do they not prove? | [docs/test-plan-en.md](docs/test-plan-en.md) |
+| What does a term mean here? | [docs/glossary-en-zh.md](docs/glossary-en-zh.md) |
+| What changed between versions? | [CHANGELOG.md](CHANGELOG.md) |
+| How do we branch, commit and merge? | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| What are an assistant's rules here? | [AGENTS.md](AGENTS.md) |
 
 ## License
 
