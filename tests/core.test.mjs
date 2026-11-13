@@ -341,6 +341,54 @@ check(
   `hits ${wholePhrase.hits}`,
 )
 
+// Recall must not depend on where an entry sits in the index. Position decides who is *visible*; it
+// must not decide who is *reachable*. The tempting optimisation — score only the resident entries,
+// since those are the ones the model can see — would silently make an over-budget entry unfindable,
+// which is the one thing the budget promises not to do (ADR 0014).
+const rankIndependence = [
+  { ...stemEntry, key: 'first', file: 'first.md' },
+  { ...stemEntry, key: 'last', file: 'last.md' },
+]
+const hitsFromEitherEnd = pickHits(rankIndependence, 'install toolchain', config).map((hit) => hit.entry.key)
+check(
+  'a query reaches an entry regardless of its position',
+  pickHits([rankIndependence[1]], 'install toolchain', config).length === 1 &&
+    pickHits([rankIndependence[0]], 'install toolchain', config).length === 1,
+  `first-only ${pickHits([rankIndependence[0]], 'install toolchain', config).length}, last-only ${pickHits([rankIndependence[1]], 'install toolchain', config).length}`,
+)
+check(
+  'shuffling the input changes the order of the hits but not the set',
+  pickHits(rankIndependence, 'install toolchain', config)
+    .map((hit) => hit.entry.key)
+    .sort()
+    .join(',') ===
+    pickHits([...rankIndependence].reverse(), 'install toolchain', config)
+      .map((hit) => hit.entry.key)
+      .sort()
+      .join(','),
+  hitsFromEitherEnd.join(','),
+)
+check(
+  'a disputed entry is unreachable even by name',
+  pickHits([{ ...stemEntry, status: 'disputed' }], 'install toolchain', config).length === 0,
+)
+// The optimisation worth guarding against: score only the resident entries, on the reasoning that those
+// are the ones the model can see. That makes an over-budget entry unfindable, and "still recallable
+// past the budget" is the one promise the budget makes (ADR 0014). A hundred entries, target last.
+const deepList = Array.from({ length: 100 }, (_, index) => ({
+  ...stemEntry,
+  key: `filler-${index}`,
+  file: `filler-${index}.md`,
+  title: 'Unrelated filler entry',
+  body: 'nothing to do with the query',
+}))
+deepList.push({ ...stemEntry, key: 'buried-target', file: 'buried-target.md' })
+check(
+  'an entry past a hundred others is still reachable',
+  pickHits(deepList, 'install toolchain', config).some((hit) => hit.entry.key === 'buried-target'),
+  pickHits(deepList, 'install toolchain', config).map((hit) => hit.entry.key).join(','),
+)
+
 // ---------------------------------------------------------------------------
 console.log('\n[5] rendering holds its budget without losing the evidence')
 // ---------------------------------------------------------------------------
