@@ -7,6 +7,35 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.23.4] — 2026-11-13
+
+### Changed
+
+**The index is re-ranked only when the notebook no longer fits the budget.** Below `indexBudgetChars`
+every entry is named regardless of position, so the ranking decided nothing — while still being
+recomputed on every sync. Since the index is a `systemPrompt.section`, that meant **a session which
+merely read an entry reordered the next session's system prompt**, invalidating the prompt cache from
+the first changed line and forcing the whole conversation behind it to be recomputed.
+
+Order is preserved now, with newly written entries on top. Past the budget, position is the only thing
+that decides who is visible, and the ranking is worth the cache it costs.
+
+### Notes
+
+- **This does not make writes cache-free, and could not.** A write changes the index, and a changed
+  line invalidates everything after it — inserting at the top is as costly as re-ranking. What it
+  removes is the *second*, avoidable class of invalidation: reads. **I had the reasoning wrong at
+  first** and said this change would help write-time caching too; it does not, and the honest version
+  is the narrower one.
+- **The ranking is unchanged and still deterministic.** Ten runs produce byte-identical index text, and
+  shuffling the input changes nothing — the filename tie-break holds. That property is what makes any
+  of this cacheable at all, so it is now asserted rather than assumed.
+- **The prompt cache itself is not measured here.** The reasoning is from the mechanism: a
+  `systemPrompt.section` sits in the prompt prefix, and prefix caching matches from the start. Nothing
+  in this repository observes `prompt_cache_hit_tokens`, and the relay in use may not return it.
+- **Four tests and three mutations.** Reverting to always-re-rank fails two of the tests, which is how
+  the fix was confirmed rather than assumed. `90 mutations, 90 killed, 0 did not apply.`
+
 ## [0.23.3] — 2026-11-13
 
 ### Changed
@@ -1006,8 +1035,9 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/ff55b63...HEAD
-[0.23.3]: https://github.com/FrozenYty/dsh-memory/commit/ff55b63
+[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/329ea67...HEAD
+[0.23.4]: https://github.com/FrozenYty/dsh-memory/commit/329ea67
+[0.23.3]: https://github.com/FrozenYty/dsh-memory/commit/52013ba
 [0.23.2]: https://github.com/FrozenYty/dsh-memory/commit/3470e3f
 [0.23.1]: https://github.com/FrozenYty/dsh-memory/commit/9507ea5
 [0.23.0]: https://github.com/FrozenYty/dsh-memory/commit/a7f7f60

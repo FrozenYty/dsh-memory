@@ -141,6 +141,13 @@ schema, so values are taken as given; the defaults below are applied in code.
 without asking — never what the notebook can hold. Entries past it are counted in the index, stay
 callable, and `memory_list` names them. See [ADR 0014](docs/adr/14-index-budget-is-residency.md).
 
+It also decides **when the index is re-ranked**, which is a cache concern rather than a memory one. The
+index is a section of the system prompt, so changing it invalidates the prompt cache from the first
+changed line. Every write pays that once and cannot avoid it; a *read* must not pay it at all, which is
+why the order is recomputed **only once the notebook no longer fits**. Below the budget every entry is
+named regardless of position, so the ranking would decide nothing — and a session that merely read an
+entry would reorder the next session's index for no benefit.
+
 **What it costs per request**, not per notebook:
 
 | Cost | Value |

@@ -217,6 +217,61 @@ check(
 )
 check('an empty notebook ranks to nothing', indexOrder([], [], NOW).length === 0)
 
+// The index is a section of the system prompt, so any change to it invalidates the prompt cache from the
+// first changed line. A write has to pay that; a *read* must not, and re-ranking on every sync is exactly
+// how it would. While the whole notebook fits the budget, position decides nothing and the order is left
+// alone; once it does not fit, position is the only thing that decides who is visible.
+const cacheProbeDir = mkdtempSync(join(tmpdir(), 'mn-order-'))
+const cacheSeed = (key, extra = {}) =>
+  writeEntryFile(cacheProbeDir, { key, title: `Entry ${key}`, body: 'b', evidence: 'e', ...extra })
+cacheSeed('alpha')
+cacheSeed('bravo')
+cacheSeed('charlie')
+const cacheRoomy = { workspaceDir: cacheProbeDir, indexBudgetChars: 100000, indexSummaryChars: 60 }
+syncIndexFile(cacheProbeDir, undefined, cacheRoomy)
+const cacheBefore = readFileSync(join(cacheProbeDir, 'INDEX.md'), 'utf8')
+
+// A read is recorded, and the next sync must not act on it while everything still fits.
+recordUsage(cacheProbeDir, 'charlie')
+const cacheWithRoom = { ...cacheRoomy, workspaceDir: cacheProbeDir }
+check(
+  'a read does not reorder the index while it all fits',
+  (syncIndexFile(cacheProbeDir, undefined, cacheWithRoom), readFileSync(join(cacheProbeDir, 'INDEX.md'), 'utf8')) ===
+    cacheBefore,
+  'INDEX.md changed after a read',
+)
+check(
+  'a new entry still goes to the top',
+  (cacheSeed('delta'), syncIndexFile(cacheProbeDir, undefined, cacheWithRoom), readFileSync(join(cacheProbeDir, 'INDEX.md'), 'utf8'))
+    .split('\n')
+    .find((line) => line.startsWith('- '))
+    ?.includes('delta') === true,
+)
+
+// Overflow is the condition under which the ranking earns its cost. A budget too small to name four
+// entries forces the ranked path, and there the most recently read entry leads.
+const cacheTight = { workspaceDir: cacheProbeDir, indexBudgetChars: 1, indexSummaryChars: 60 }
+syncIndexFile(cacheProbeDir, undefined, cacheTight)
+const cacheTightText = readFileSync(join(cacheProbeDir, 'INDEX.md'), 'utf8')
+check(
+  'an over-budget notebook is re-ranked instead of preserved',
+  cacheTightText !== cacheBefore && cacheTightText.indexOf('charlie') < cacheTightText.indexOf('alpha'),
+  cacheTightText.split('\n').filter((l) => l.startsWith('- ')).join(' '),
+)
+const cacheCrowded = mkdtempSync(join(tmpdir(), 'mn-crowd-'))
+for (const key of ['one', 'two', 'three']) {
+  writeEntryFile(cacheCrowded, { key, title: `Entry ${key}`, body: 'b', evidence: 'e' })
+}
+syncIndexFile(cacheCrowded, undefined, cacheRoomy)
+const cacheCrowdedBefore = readFileSync(join(cacheCrowded, 'INDEX.md'), 'utf8')
+recordUsage(cacheCrowded, 'one')
+syncIndexFile(cacheCrowded, undefined, cacheRoomy)
+check(
+  'and a read leaves it alone again while it still fits',
+  readFileSync(join(cacheCrowded, 'INDEX.md'), 'utf8') === cacheCrowdedBefore,
+  'INDEX.md changed after a read',
+)
+
 // ---------------------------------------------------------------------------
 console.log('\n[2] tokenising and the acknowledgement gate')
 // ---------------------------------------------------------------------------
@@ -884,12 +939,12 @@ check(
 
 // A fact just written is the most likely thing to be needed next, so it must not be the first thing
 // the budget hides.
-const orderDir = mkdtempSync(join(tmpdir(), 'mn-order-'))
-writeFileSync(join(orderDir, 'older.md'), '# older\n', 'utf8')
-writeFileSync(join(orderDir, 'INDEX.md'), '- `older.md`\n', 'utf8')
-writeFileSync(join(orderDir, 'newer.md'), '# newer\n', 'utf8')
-syncIndexFile(orderDir)
-const ordered = readIndexFiles(orderDir)
+const prependDir = mkdtempSync(join(tmpdir(), 'mn-order-'))
+writeFileSync(join(prependDir, 'older.md'), '# older\n', 'utf8')
+writeFileSync(join(prependDir, 'INDEX.md'), '- `older.md`\n', 'utf8')
+writeFileSync(join(prependDir, 'newer.md'), '# newer\n', 'utf8')
+syncIndexFile(prependDir)
+const ordered = readIndexFiles(prependDir)
 check('a new entry goes to the top of the index', ordered[0] === 'newer.md', ordered.join(','))
 check('the existing order is kept', ordered[1] === 'older.md', ordered.join(','))
 
