@@ -464,9 +464,28 @@ export function textOfMessage(message) {
   return text
 }
 
-export function extractQuery(messages) {
+/**
+ * The text recall is matched against: the most recent messages, newest last.
+ *
+ * Built from the newest message backwards, and that order is the point. Slicing a join of the whole
+ * tail from the front means a long earlier message pushes the request being answered out of the window
+ * entirely — paste one file into a session and recall starts matching against the previous turn. The
+ * newest message is the one worth keeping, so it is placed first and the budget is spent backwards
+ * from it.
+ */
+export function extractQuery(messages, limit = 1200) {
   const tail = messages.slice(-3)
-  return tail.map(textOfMessage).join(' ').replace(/\s+/g, ' ').trim().slice(0, 1200)
+  const parts = []
+  let used = 0
+  for (let index = tail.length - 1; index >= 0 && used < limit; index -= 1) {
+    const text = textOfMessage(tail[index]).replace(/\s+/g, ' ').trim()
+    if (text.length === 0) continue
+    // Within one message keep its end too: a long paste is mostly context, and what follows it is the ask.
+    const piece = text.slice(-(limit - used))
+    parts.unshift(piece)
+    used += piece.length + 1
+  }
+  return parts.join(' ').trim()
 }
 
 /**

@@ -32,6 +32,10 @@ const mutations = [
   ['a new entry no longer outranks a stale use', CORE, 'const sortKey = (entry) => Math.max(lastUsedMs(entry), entry.mtimeMs ?? 0)', 'const sortKey = (entry) => lastUsedMs(entry)'],
   ['the tie-break disappears, so the order is unstable', CORE, '|| (a.file < b.file ? -1 : a.file > b.file ? 1 : 0),', ','],
   ['the index order stops being recomputed', CORE, 'const wanted = indexOrder(entries, readUsage(dir)).map((entry) => entry.file)', 'const wanted = entries.map((entry) => entry.file)'],
+  // --- the query: what recall matches against -----------------------------
+  ['the query is sliced from the front again', CORE, '    const piece = text.slice(-(limit - used))', '    const piece = text.slice(0, limit - used)'],
+  ['every message is kept whatever the limit', CORE, 'for (let index = tail.length - 1; index >= 0 && used < limit; index -= 1) {', 'for (let index = tail.length - 1; index >= 0; index -= 1) {'],
+  ['a message with no text still counts a separator', CORE, "    if (text.length === 0) continue\n", ''],
   ['a trailing date is no longer stripped', CORE, "const summary = source.replace(/\\s*[—–-]\\s*\\d{4}-\\d{2}-\\d{2}\\s*$/, '').trim()", 'const summary = source.trim()'],
   ['the summary cut ignores word boundaries', CORE, "? `${(summary.slice(0, summaryChars - 1).replace(/\\s+\\S*$/, '') || summary.slice(0, summaryChars - 1)).trimEnd()}…`", "? `${summary.slice(0, summaryChars - 1).trimEnd()}…`"],
   ['the overflow line loses its count', CORE, "return `- … and ${hidden} more, all listed by \\`memory_list\\`\\n`", "return `- …\\n`"],
