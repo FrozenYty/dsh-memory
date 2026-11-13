@@ -7,6 +7,55 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.23.0] — 2026-11-13
+
+### Changed
+
+- **The index order is ranked, not accumulated.** `INDEX.md` used to prepend new files and never
+  reshuffle the rest, on the reasoning that "most likely first" was a judgement no script could make
+  ([ADR 0009](docs/adr/09-derived-index-and-write-refusal.md)). **That reasoning held while there was
+  nothing to rank by.** It has three signals now — trust status, `usage.jsonl`, and file timestamps —
+  so the order is computed on every sync. See [ADR 0017](docs/adr/17-index-order-from-use.md).
+
+  | Tier | Condition |
+  |---|---|
+  | 1 | `verified`, read in the last 30 days |
+  | 2 | `verified`, anything else |
+  | 3 | `candidate`, read in the last 30 days |
+  | 4 | `candidate`, anything else |
+  | 5 | `disputed` |
+
+  Within a tier the key is `max(last read, file modified)`, and a filename breaks the tie.
+
+- **`indexBudgetChars` 2800 → 9000**, which names about a hundred entries instead of about thirty.
+  Paid for in context: roughly 2,500 tokens of index per session rather than 780. Worth it only because
+  the ranking exists — a hundred rows in an arbitrary order would have been a hundred rows nobody
+  could choose from.
+
+### Fixed
+
+**Two defects the new tests found, both in code I had just written.**
+
+- **The 30-day window was missing from the first implementation.** Tiers collapsed into "used" versus
+  "never used", so an entry read once last year outranked one written that morning — **the cold start I
+  set out to prevent became permanent.** The test `a brand-new entry outranks one last used long ago`
+  failed on exactly that. The design statement had said "30 days" and the code had dropped it.
+- **Ties made the order unstable.** Entries written in one session share a timestamp, and the incoming
+  order comes from `readdirSync`, which the filesystem does not promise to keep stable. Without a
+  filename tie-break the same notebook produced a different `INDEX.md` on the next run, so every sync
+  rewrote a file that had not changed.
+
+### Notes
+
+- **Six mutations guard this**, one per detail: the window, the disputed tier, the recency test, the
+  `max(...)` key, the tie-break, and the recomputation itself. All killed; **81 mutations, 81 killed**.
+- **A mutation that no longer applied was caught by the scan**, not by review: `index budget back to
+  1400` searched for `2800`, which this change replaced. It now targets `9000` and is called
+  `index budget back to 2800`. **A scanner testing less than it claims is the quietest way to lie** —
+  this is the check doing its job on the change that broke it.
+- **`syncIndexFile` now reads `usage.jsonl`**, a file it used to ignore. A corrupt log changes the
+  order rather than breaking the index, since `readUsage` already survives a glued or half-written file.
+
 ## [0.22.1] — 2026-11-13
 
 ### Changed
@@ -859,7 +908,8 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/7ffde2f...HEAD
+[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/7ba1b92...HEAD
+[0.23.0]: https://github.com/FrozenYty/dsh-memory/commit/7ba1b92
 [0.22.1]: https://github.com/FrozenYty/dsh-memory/commit/7ffde2f
 [0.22.0]: https://github.com/FrozenYty/dsh-memory/commit/0b943ce
 [0.21.2]: https://github.com/FrozenYty/dsh-memory/commit/f4bcb71

@@ -1,7 +1,9 @@
 # 0009 — The index is derived data, and a write that would truncate it is refused
 
 - **Status:** Partially superseded by [0014](14-index-budget-is-residency.md) — the derived index
-  stands; the write refusal was withdrawn
+  stands; the write refusal was withdrawn. The ordering rule is superseded by
+  [0017](17-index-order-from-use.md) — the plugin ranks the order now, because there is usage data
+  to rank by.
 - **Date:** 2026-11-11
 - **Supersedes:** part of [0002](02-filename-index-without-descriptions.md) (the index is no longer a hand-maintained document)
 
@@ -30,9 +32,11 @@ it has a prefix of one.
 
 **The index is derived from the directory**, rebuilt by the plugin:
 
-- `syncIndexFile` rewrites `INDEX.md` from a directory scan, keeping the order the file already had.
-  The plugin owns the lines; the human owns the order, because "most likely first" is a judgement no
-  script can make.
+- `syncIndexFile` rewrites `INDEX.md` from a directory scan. The plugin owns the lines and, since
+  [0017](17-index-order-from-use.md), the order too — ranked by trust status and how recently an entry
+  was read. When this ADR was written the human owned the order, because "most likely first" was a
+  judgement no script could make; that held while there was no usage data to make it from, and 0017
+  records what changed.
 - It runs when the plugin writes, when status changes, and once per directory per process on first
   prompt assembly — so a file added or deleted by another tool is reconciled rather than left to rot.
 - A write that would push the injected index past its budget is **refused before it lands**, with the

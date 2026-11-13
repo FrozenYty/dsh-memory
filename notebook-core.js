@@ -620,21 +620,65 @@ const INDEX_PREAMBLE =
  *
  * Only writes when the result differs, so a read-mostly turn never touches the filesystem.
  */
+/**
+ * The order entries are read in.
+ *
+ * Residency in the injected index is finite, so this order decides who the model can see without
+ * asking — which makes it a ranking, not a listing. It used to be "whatever the human arranged, with
+ * new files prepended"; the change is that there is now usage data to rank by, not that a script got
+ * smarter. See ADR 0017.
+ *
+ * Four tiers, and a sort key of `max(last used, file modified)`:
+ *
+ *   1. verified, used in the last 30 days    the entries that have earned their place
+ *   2. verified, anything else               a new entry gets its chance here
+ *   3. candidate, used in the last 30 days
+ *   4. candidate, anything else
+ *   5. disputed                              last, since the injected index filters it out anyway
+ *
+ * Two details carry the whole design, and dropping either one makes the ranking worse than no ranking:
+ *
+ * The 30-day window. Without it the tiers collapse into "used" versus "never used", and an entry used
+ * once last year outranks one written this morning — so a cold start is permanent after all.
+ *
+ * The `max(...)` sort key. Within a tier, sorting by last use alone puts an entry with no history below
+ * every used one forever: it is never reachable from the index, so it never accumulates the history it
+ * would need to climb. Folding in the file's own modification time means a freshly written entry lands
+ * ahead of one used months ago, without anyone reordering the file by hand.
+ */
+export function indexOrder(entries, usage = [], now = Date.now()) {
+  const lastUsed = new Map()
+  for (const row of usage) {
+    const previous = lastUsed.get(row.entry)
+    if (previous === undefined || row.day > previous) lastUsed.set(row.entry, row.day)
+  }
+  const lastUsedMs = (entry) => {
+    const day = lastUsed.get(entry.key)
+    if (day === undefined) return 0
+    const ms = Date.parse(`${day}T00:00:00`)
+    return Number.isFinite(ms) ? ms : 0
+  }
+  const sortKey = (entry) => Math.max(lastUsedMs(entry), entry.mtimeMs ?? 0)
+  const tier = (entry) => {
+    if (entry.status === 'disputed') return 4
+    const base = entry.status === 'verified' ? 0 : 2
+    return base + (now - lastUsedMs(entry) <= RECENT_USE_MS ? 0 : 1)
+  }
+  // The filename breaks a tie, and it has to: entries written in one session share a timestamp, and the
+  // incoming order comes from `readdirSync`, which the filesystem does not promise to keep stable. Without
+  // this the same notebook can produce a different INDEX.md on the next run, and every sync would rewrite
+  // a file that had not really changed.
+  return [...entries].sort(
+    (a, b) => tier(a) - tier(b) || sortKey(b) - sortKey(a) || (a.file < b.file ? -1 : a.file > b.file ? 1 : 0),
+  )
+}
+
 export function syncIndexFile(dir, entries = scanDir(dir)) {
   const indexPath = join(dir, 'INDEX.md')
   if (!existsSync(dir)) return false
-  const onDisk = new Set(entries.map((entry) => entry.file))
-  const listed = [...new Set(readIndexFiles(dir))].filter((file) => onDisk.has(file))
-  const listedSet = new Set(listed)
-  const added = entries
-    .filter((entry) => !listedSet.has(entry.file))
-    .sort((a, b) => b.mtimeMs - a.mtimeMs)
-    .map((entry) => entry.file)
-  // New entries go to the top, not the bottom. Residency in the injected index is finite, and what
-  // was just learned is the most likely thing to be needed next — appending put it last, so a notebook
-  // at its budget would hide a fact the moment it was written. Existing order is never reshuffled, so
-  // a hand-arranged "most likely first" survives.
-  const wanted = [...added, ...listed]
+  // The order is computed, not accumulated: every file on disk is ranked on every sync, so a rename,
+  // a status change or a read all land in the same place instead of waiting for someone to tidy up.
+  const wanted = indexOrder(entries, readUsage(dir)).map((entry) => entry.file)
   if (wanted.length === 0) return false
 
   const text = INDEX_PREAMBLE + wanted.map((file) => `- \`${file}\`\n`).join('')
@@ -801,6 +845,11 @@ export function diagnoseNotebook(config, cwd) {
 
 /** Append-only file beside the entries. `.jsonl` so the entry scan never mistakes it for an entry. */
 export const USAGE_FILE = 'usage.jsonl'
+
+// How long a use keeps an entry in the top tier. Without a window the tiers collapse into "used" versus
+// "never used", and an entry used once last year outranks one written this morning — so a cold start is
+// permanent, which is the failure the ranking exists to avoid.
+const RECENT_USE_MS = 30 * 86_400_000
 
 /**
  * Record that an entry was published by recall.
