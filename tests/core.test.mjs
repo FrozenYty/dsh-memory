@@ -20,6 +20,7 @@ import {
   diagnoseNotebook,
   ensurePolicyEntry,
   expandHome,
+  extractQuery,
   indexDrift,
   indexOrder,
   indexResidency,
@@ -256,6 +257,37 @@ const prefixHit = scoreEntry(stemEntry, tokenize('install toolchain'))
 check('a five-character prefix matches a title word', prefixHit.score > 0 && prefixHit.hits === 2, JSON.stringify(prefixHit))
 const shortMiss = scoreEntry(stemEntry, tokenize('env'))
 check('a three-character word does not prefix-match', shortMiss.score === 0, JSON.stringify(shortMiss))
+
+// The query is assembled from the newest message backwards, because the alternative loses the request
+// being answered. Pasting one file into a session used to push the actual question out of the window
+// entirely, and recall then matched against the previous turn — silently, since an empty-ish query just
+// returns no hits and looks like "nothing relevant".
+const pasteThenAsk = extractQuery([
+  { content: [{ type: 'text', text: 'x'.repeat(5000) }] },
+  { content: [{ type: 'text', text: 'mcp 服务器挂不上，工具都不见了' }] },
+])
+check(
+  'a long earlier message does not evict the newest request',
+  pasteThenAsk.includes('mcp') && pasteThenAsk.length <= 1200,
+  `${pasteThenAsk.length} chars, tail ${JSON.stringify(pasteThenAsk.slice(-30))}`,
+)
+const twoTurns = extractQuery([
+  { content: [{ type: 'text', text: 'github blocked' }] },
+  { content: [{ type: 'text', text: 'mcp will not mount' }] },
+])
+check(
+  'two short messages both survive, in order',
+  twoTurns === 'github blocked mcp will not mount',
+  JSON.stringify(twoTurns),
+)
+check(
+  'a message with no text blocks contributes nothing',
+  extractQuery([{ content: [{ type: 'tool-call', name: 'x' }] }, { content: [{ type: 'text', text: 'real ask' }] }]) ===
+    'real ask',
+  extractQuery([{ content: [{ type: 'tool-call', name: 'x' }] }, { content: [{ type: 'text', text: 'real ask' }] }]),
+)
+check('no messages yields an empty query', extractQuery([]) === '')
+check('the query never exceeds its limit', extractQuery([{ content: [{ type: 'text', text: 'y'.repeat(9000) }] }]).length <= 1200)
 
 // ---------------------------------------------------------------------------
 console.log('\n[3] recall (English / technical queries)')

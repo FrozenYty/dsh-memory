@@ -7,6 +7,41 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.23.1] — 2026-11-13
+
+### Fixed
+
+**A long earlier message evicted the newest request from the recall query.** `extractQuery` joined the
+last three messages and sliced the result from the front:
+
+```js
+return tail.map(textOfMessage).join(' ').replace(/\s+/g, ' ').trim().slice(0, 1200)
+```
+
+The newest message is at the **end** of that join, so once the earlier messages filled 1,200 characters
+the request being answered was dropped entirely. Pasted one file into a session and recall started
+matching against the previous turn — silently, because a query of the wrong words just returns no hits,
+which looks identical to "nothing relevant".
+
+Measured, not inferred: with a 5,000-character message followed by `mcp 服务器挂不上，工具都不见了`,
+the extracted query contained **no trace of `mcp`**.
+
+### Changed
+
+- **The query is assembled from the newest message backwards**, spending the 1,200-character budget from
+  the request that is actually being answered. Within one message it keeps the end too — a long paste is
+  mostly context and the ask follows it.
+
+### Notes
+
+- **Five tests**, and reverting to the one-liner makes exactly one of them fail (`200 passed, 1 failed`),
+  which is the only evidence that a test is not decoration.
+- **Three mutations** guard it: slicing from the front again, ignoring the limit, and letting an
+  empty message still contribute a separator. **84 mutations, 84 killed.**
+- **The same shape as the evidence cap fixed in 0.22.0** — a silent slice at a boundary, dropping the end
+  that mattered. Two instances of it in one plugin is a pattern, not bad luck; the third is
+  `title.slice(0, 120)` and `body.slice(0, 4000)`, still unquieted.
+
 ## [0.23.0] — 2026-11-13
 
 ### Changed
@@ -908,8 +943,9 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/7ba1b92...HEAD
-[0.23.0]: https://github.com/FrozenYty/dsh-memory/commit/7ba1b92
+[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/3c3feaa...HEAD
+[0.23.1]: https://github.com/FrozenYty/dsh-memory/commit/3c3feaa
+[0.23.0]: https://github.com/FrozenYty/dsh-memory/commit/a7f7f60
 [0.22.1]: https://github.com/FrozenYty/dsh-memory/commit/7ffde2f
 [0.22.0]: https://github.com/FrozenYty/dsh-memory/commit/0b943ce
 [0.21.2]: https://github.com/FrozenYty/dsh-memory/commit/f4bcb71
