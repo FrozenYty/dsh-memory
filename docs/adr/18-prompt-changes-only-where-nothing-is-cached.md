@@ -64,11 +64,23 @@ question — a claim of "inherent" ends the search.
   snapshot only when the retained value differs"*) — so an unmatched turn costs nothing. But the
   frequency is the caller's, not ours, and it is one more reason the default is off
   ([ADR 0015](15-recall-is-model-driven-by-default.md)).
-- **It does not measure anything.** The reasoning is from the mechanism: a section sits at the prompt
-  head and prefix caching matches from the start. No code in this repository reads
-  `prompt_cache_hit_tokens`, and the relay in use may not return it. **If the field ever becomes
-  observable, this ADR must be checked rather than trusted** — two identical long conversations, one with
-  a memory write between them.
+- **It is now measured, and it was measured last.** For two versions the reasoning above rested on the
+  mechanism alone, and the ADR said so. A probe against the relay in use settled it — and corrected the
+  claim that it *could not* be settled: the field exists under a name this repository had not looked for.
+
+  ```
+  request 1  index A + history      prompt 4223, cached    0, created 4160
+  request 2  index A + history      prompt 4223, cached 4160, created    0
+  request 3  index B + history      prompt 4223, cached    0, created 4160
+  ```
+
+  Request 3 differs from request 2 by **one character, on the last line of the index**. It recomputed the
+  whole 4160-token prefix. **A one-character edit at the front costs the entire conversation behind it**,
+  which is the entire justification for this ADR and is now an observation rather than an inference.
+- **The relay reports cache accounting as `usage.prompt_tokens_details.cached_tokens`**, not as
+  `prompt_cache_hit_tokens`. A probe looking only for the latter name concludes, wrongly, that the
+  deployment cannot be measured — which is what happened here first. The same payload carries
+  `created_cache_tokens`, which is what makes a cold/warm pair interpretable.
 - **It does not constrain the harness.** Long sessions are compacted, which rewrites the prompt and
   invalidates everything; capture hints are injected once per session. Neither is this plugin's doing,
   and both will dominate any hit-rate observation.
@@ -88,3 +100,6 @@ question — a claim of "inherent" ends the search.
 - **Two tests hold this in place**: a read does not reorder a notebook that fits, and an entry written
   mid-session stays out of that session's index. Both were confirmed by reverting the change and watching
   them fail.
+- **No test asserts the cache behaviour itself**, and none can: the suite never calls the API. The probe
+  that produced the numbers above lives outside the repository, in a session scratch folder. **Re-running
+  it after a change to prompt injection is the manual step this ADR cannot automate.**
