@@ -61,6 +61,11 @@ const HINT_ORDER = 4102
 // reads as complete.
 const EVIDENCE_LIMIT = 1000
 
+// The other two fields with a cap. Both are silent slices today, and both lose the end: a long title is
+// a style problem, but a long body loses whatever was written last — usually the fix.
+const TITLE_LIMIT = 120
+const BODY_LIMIT = 4000
+
 const CAPTURE_HINT =
   '<memory-capture-hint>\n' +
   'This conversation is close to being compacted, and a summary will not keep everything. ' +
@@ -458,7 +463,7 @@ export function apply(ctx, config) {
         schema: {
           type: 'object',
           additionalProperties: false,
-          required: ['name', 'operation', 'status', 'indexResident', 'indexOverflow', 'evidenceTruncated'],
+          required: ['name', 'operation', 'status', 'indexResident', 'indexOverflow', 'truncated'],
           properties: {
             name: { type: 'string' },
             operation: { type: 'string' },
@@ -472,10 +477,11 @@ export function apply(ctx, config) {
               description:
                 'Entries now past the index budget because this one took a line. They stay recallable and memory_list names them, but the model cannot see them unprompted.',
             },
-            evidenceTruncated: {
-              type: 'boolean',
+            truncated: {
+              type: 'array',
+              items: { type: 'string' },
               description:
-                'True when the evidence supplied was longer than the stored limit and was cut. A truncated evidence line no longer proves what it was written to prove, so this is reported rather than hidden.',
+                'Field names that were longer than the stored limit and were cut, e.g. ["body"]. A cut field keeps its beginning and loses its end, which is usually the conclusion or the fix — so a non-empty list means the entry is stored incomplete.',
             },
           },
         },
@@ -487,8 +493,8 @@ export function apply(ctx, config) {
               (value.indexOverflow > 0
                 ? ` — ${value.indexOverflow} other entry(ies) are now past the index budget; memory_health lists them`
                 : '') +
-              (value.evidenceTruncated
-                ? ` — evidence was longer than ${EVIDENCE_LIMIT} characters and was cut; the stored line no longer proves the whole claim`
+              (value.truncated.length > 0
+                ? ` — stored incomplete: ${value.truncated.join(', ')} exceeded the limit and the end was cut`
                 : ''),
           },
         ],
@@ -497,8 +503,13 @@ export function apply(ctx, config) {
         const dirs = resolveDirs(cfg, exec?.agent?.session?.header?.cwd)
         if (dirs.length === 0) throw new Error('no memory directory configured: set workspaceDir or machineDir')
         const key = normalizeKey(args.name)
-        const title = String(args.title ?? '').trim().slice(0, 120)
+        // Measured before the slice, not after: `title` is already cut by the time it is stored, so
+        // asking whether the stored value is over the limit can never be true. The first version of this
+        // did exactly that, and the test for it failed on the spot.
+        const rawTitle = String(args.title ?? '').trim()
+        const title = rawTitle.slice(0, TITLE_LIMIT)
         const evidence = String(args.evidence ?? '').trim()
+        const body = String(args.body ?? '')
         if (title.length === 0) throw new Error('a memory needs a title')
         if (evidence.length === 0) throw new Error('a memory needs evidence: the command or error that proves it')
         const status = args.status === 'verified' ? 'verified' : 'candidate'
@@ -520,16 +531,24 @@ export function apply(ctx, config) {
           status,
           triggers: String(args.triggers ?? ''),
           summary: String(args.summary ?? ''),
-          body: String(args.body ?? '').slice(0, 4000),
+          body: body.slice(0, BODY_LIMIT),
           evidence: evidence.slice(0, EVIDENCE_LIMIT),
         })
+        // Every field that gets cut is named in one place. A silent slice at a boundary was the defect
+        // twice already — the evidence line lost its conclusion and the query lost the request — and both
+        // read as complete afterwards. The list is built from the same constants the slices use, so a
+        // limit and its report cannot drift apart.
+        const truncated = []
+        if (rawTitle.length > TITLE_LIMIT) truncated.push('title')
+        if (body.length > BODY_LIMIT) truncated.push('body')
+        if (evidence.length > EVIDENCE_LIMIT) truncated.push('evidence')
         return {
           name: key,
           operation: created ? 'created' : 'updated',
           status,
           indexResident: residency.resident,
           indexOverflow: residency.hidden,
-          evidenceTruncated: evidence.length > EVIDENCE_LIMIT,
+          truncated,
         }
       },
     }),

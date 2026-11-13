@@ -24,7 +24,6 @@ const mutations = [
   ['index budget back to 2800', INDEX, 'indexBudgetChars: 9000,', 'indexBudgetChars: 2800,'],
   ['summary length back to 20', INDEX, 'indexSummaryChars: 60,', 'indexSummaryChars: 20,'],
   ['the evidence limit drops back to 300', INDEX, 'const EVIDENCE_LIMIT = 1000', 'const EVIDENCE_LIMIT = 300'],
-  ['truncation stops being reported', INDEX, 'evidenceTruncated: evidence.length > EVIDENCE_LIMIT,', 'evidenceTruncated: false,'],
   // --- the ranking: who the model can see without asking -------------------
   ['the use window disappears', CORE, 'const RECENT_USE_MS = 30 * 86_400_000', 'const RECENT_USE_MS = Number.MAX_SAFE_INTEGER'],
   ['a disputed entry stops ranking last', CORE, "if (entry.status === 'disputed') return 4", "if (entry.status === 'disputed') return 0"],
@@ -36,6 +35,12 @@ const mutations = [
   ['the query is sliced from the front again', CORE, '    const piece = text.slice(-(limit - used))', '    const piece = text.slice(0, limit - used)'],
   ['every message is kept whatever the limit', CORE, 'for (let index = tail.length - 1; index >= 0 && used < limit; index -= 1) {', 'for (let index = tail.length - 1; index >= 0; index -= 1) {'],
   ['a message with no text still counts a separator', CORE, "    if (text.length === 0) continue\n", ''],
+  // --- the caps: every cut field has to say so ----------------------------
+  ['a truncated title is no longer reported', INDEX, "if (rawTitle.length > TITLE_LIMIT) truncated.push('title')", ''],
+  ['a truncated body is no longer reported', INDEX, "if (body.length > BODY_LIMIT) truncated.push('body')", ''],
+  ['a truncated evidence line is no longer reported', INDEX, "if (evidence.length > EVIDENCE_LIMIT) truncated.push('evidence')", ''],
+  ['the title length is measured after the slice', INDEX, 'if (rawTitle.length > TITLE_LIMIT)', 'if (title.length > TITLE_LIMIT)'],
+  ['the body limit stops applying', INDEX, 'body: body.slice(0, BODY_LIMIT),', 'body,'],
   ['a trailing date is no longer stripped', CORE, "const summary = source.replace(/\\s*[—–-]\\s*\\d{4}-\\d{2}-\\d{2}\\s*$/, '').trim()", 'const summary = source.trim()'],
   ['the summary cut ignores word boundaries', CORE, "? `${(summary.slice(0, summaryChars - 1).replace(/\\s+\\S*$/, '') || summary.slice(0, summaryChars - 1)).trimEnd()}…`", "? `${summary.slice(0, summaryChars - 1).trimEnd()}…`"],
   ['the overflow line loses its count', CORE, "return `- … and ${hidden} more, all listed by \\`memory_list\\`\\n`", "return `- …\\n`"],
