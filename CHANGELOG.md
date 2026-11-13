@@ -7,6 +7,42 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.23.7] — 2026-11-14
+
+### Changed
+
+**ADR 0018's central claim is now measured, and the claim that it could not be measured was wrong.**
+
+The ADR shipped saying the reasoning was from the mechanism, that nothing here read
+`prompt_cache_hit_tokens`, and that the relay might not return it. A probe against the relay settled it:
+
+```
+request 1  index A + history      prompt 4223, cached    0, created 4160
+request 2  index A + history      prompt 4223, cached 4160, created    0
+request 3  index B + history      prompt 4223, cached    0, created 4160
+```
+
+Request 3 differs from request 2 by **one character, on the last line of the index**, and it recomputed
+the entire 4160-token prefix.
+
+**The relay does report cache accounting — as `usage.prompt_tokens_details.cached_tokens`.** `0.23.6` and
+ADR 0018 both looked for `prompt_cache_hit_tokens`, which is DeepSeek's own documented name and is not
+what this deployment sends. **A probe that checks for one expected key and finds nothing concludes the
+deployment cannot be measured.** It took dumping the key list to see it.
+
+### Notes
+
+- **This vindicates the reasoning rather than changing it.** Every measurement agrees with what the ADR
+  argued: the prefix rule is absolute, and a one-character edit at the front costs everything behind it.
+  What changed is the status of the claim — inference to observation — and the deletion of a caveat that
+  was itself untrue.
+- **The cost is now a number.** 4160 tokens recomputed for a one-character change, on a prompt of 4223.
+  Before `0.23.4` and `0.23.5` that was what a mid-session memory write bought, once per write.
+- **The probe does not run in CI**: it calls the API and needs a key. It lives in a session scratch
+  folder, and re-running it after any change to prompt injection remains a manual step.
+- **Two verified memory entries** record the relay's field names and the key's location, so the next
+  session does not repeat the search for `prompt_cache_hit_tokens`.
+
 ## [0.23.6] — 2026-11-14
 
 ### Added
@@ -1099,8 +1135,9 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/78b5b96...HEAD
-[0.23.6]: https://github.com/FrozenYty/dsh-memory/commit/78b5b96
+[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/ea41934...HEAD
+[0.23.7]: https://github.com/FrozenYty/dsh-memory/commit/ea41934
+[0.23.6]: https://github.com/FrozenYty/dsh-memory/commit/a787fc1
 [0.23.5]: https://github.com/FrozenYty/dsh-memory/commit/cd6a81f
 [0.23.4]: https://github.com/FrozenYty/dsh-memory/commit/fb92a00
 [0.23.3]: https://github.com/FrozenYty/dsh-memory/commit/52013ba
