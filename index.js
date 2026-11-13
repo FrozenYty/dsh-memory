@@ -93,7 +93,7 @@ const DEFAULTS = {
    * entries at 60 characters of summary each, up from 15 with names only. Cost is ~700 tokens of
    * stable prompt prefix instead of ~350. See docs/adr/16-index-carries-summaries.md.
    */
-  indexBudgetChars: 2800,
+  indexBudgetChars: 9000,
   /** Characters of summary per index line. 0 falls back to bare filenames. */
   indexSummaryChars: 60,
   /**

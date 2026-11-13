@@ -40,16 +40,28 @@ filesystem plus one cache, so neither writes session events.
 
 ## The index is computed, not maintained
 
-`INDEX.md` is rebuilt from a directory scan. The plugin owns the lines — a file added outside it is
-indexed, a deleted one drops out — and the human owns the order, because "most likely first" is a
-judgement no script can make. `syncIndexFile` runs on every plugin write, on a status change, and once
-per directory per process, so a directory changed by another tool is reconciled rather than left to rot.
+`INDEX.md` is rebuilt from a directory scan, and **the order is computed on every sync** — see
+[ADR 0017](adr/17-index-order-from-use.md). Five tiers: `verified` read in the last 30 days, `verified`
+otherwise, `candidate` read in the last 30 days, `candidate` otherwise, `disputed` last. Within a tier
+the sort key is `max(last read, file modified)`, and a filename breaks the tie.
+
+Both halves of that matter. **The 30-day window** stops a single busy week from hardening into a
+permanent position. **The `max(...)` key** is what keeps a cold start from being permanent: ranking by
+last read alone puts an entry with no history below every used one forever, so it is never reachable
+from the index and never accumulates the history it would need to climb. A freshly written entry has a
+recent modification time, so it lands ahead of one read months ago without anyone reordering a file.
+**The tie-break** is not cosmetic: entries written in one session share a timestamp and the scan order
+comes from the filesystem, so without it the same notebook produces a different `INDEX.md` on the next
+run and every sync rewrites a file that did not change.
+
+`syncIndexFile` runs on every plugin write, on a status change, and once per directory per process, so
+a directory changed by another tool is reconciled rather than left to rot.
 
 `indexBudgetChars` caps what is **resident**, not what the notebook can hold. Entries past it are
 counted in the index — `… and N more, all listed by memory_list` — because a counted omission is not a
-silent one; every entry stays recallable and `memory_list` names them. New entries go to the **top** of
-`INDEX.md`: residency is finite, and what was just learned is the most likely thing to be needed next.
-Appending put it last, so a notebook at its budget hid a fact the moment it was written.
+silent one; every entry stays recallable and `memory_list` names them. The default is 9000, which names
+about a hundred entries; at 2800 it named about thirty, and the gap showed up as entries nobody could
+see without asking.
 
 A write therefore never fails on budget. It reports `indexResident` and `indexOverflow` instead, so the
 writer learns whether the entry is visible and what it cost. See

@@ -146,7 +146,7 @@ Set values under the `memory` row in the profile's `cordis.patch.yml`. This bund
 | `workspaceDir` | `.agents/memory` | Notebook directory, relative to the session working directory. `''` disables this tier. |
 | `machineDir` | `''` | Optional machine-wide tier, absolute or `~`-prefixed. The workspace tier wins name collisions. |
 | `showIndex` | `true` | Inject the filename index. |
-| `indexBudgetChars` | `2800` | Ceiling on how many entries are **named** in the index, not on how many the notebook may hold. Entries past it are counted in the index and stay recallable. |
+| `indexBudgetChars` | `9000` | Ceiling on how many entries are **named** in the index, not on how many the notebook may hold. Entries past it are counted in the index and stay recallable. |
 | `indexSummaryChars` | `60` | Characters of summary per index line, after the filename. `0` falls back to bare filenames — more entries, less information about each. |
 | `recallEnabled` | `false` | Publish a matching entry for the turn. Off by default: a lexical matcher cannot tell "certificate error" from "certificate exam". |
 | `recallBudgetChars` | `1400` | Ceiling on one recall publication. |

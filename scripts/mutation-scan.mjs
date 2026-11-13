@@ -21,10 +21,17 @@ const OUT = join(ROOT, '_mutation-out.txt')
 
 const mutations = [
   // --- the index: what the model sees -------------------------------------
-  ['index budget back to 1400', INDEX, 'indexBudgetChars: 2800,', 'indexBudgetChars: 1400,'],
+  ['index budget back to 2800', INDEX, 'indexBudgetChars: 9000,', 'indexBudgetChars: 2800,'],
   ['summary length back to 20', INDEX, 'indexSummaryChars: 60,', 'indexSummaryChars: 20,'],
   ['the evidence limit drops back to 300', INDEX, 'const EVIDENCE_LIMIT = 1000', 'const EVIDENCE_LIMIT = 300'],
   ['truncation stops being reported', INDEX, 'evidenceTruncated: evidence.length > EVIDENCE_LIMIT,', 'evidenceTruncated: false,'],
+  // --- the ranking: who the model can see without asking -------------------
+  ['the use window disappears', CORE, 'const RECENT_USE_MS = 30 * 86_400_000', 'const RECENT_USE_MS = Number.MAX_SAFE_INTEGER'],
+  ['a disputed entry stops ranking last', CORE, "if (entry.status === 'disputed') return 4", "if (entry.status === 'disputed') return 0"],
+  ['ranking ignores how recently an entry was used', CORE, 'return base + (now - lastUsedMs(entry) <= RECENT_USE_MS ? 0 : 1)', 'return base'],
+  ['a new entry no longer outranks a stale use', CORE, 'const sortKey = (entry) => Math.max(lastUsedMs(entry), entry.mtimeMs ?? 0)', 'const sortKey = (entry) => lastUsedMs(entry)'],
+  ['the tie-break disappears, so the order is unstable', CORE, '|| (a.file < b.file ? -1 : a.file > b.file ? 1 : 0),', ','],
+  ['the index order stops being recomputed', CORE, 'const wanted = indexOrder(entries, readUsage(dir)).map((entry) => entry.file)', 'const wanted = entries.map((entry) => entry.file)'],
   ['a trailing date is no longer stripped', CORE, "const summary = source.replace(/\\s*[—–-]\\s*\\d{4}-\\d{2}-\\d{2}\\s*$/, '').trim()", 'const summary = source.trim()'],
   ['the summary cut ignores word boundaries', CORE, "? `${(summary.slice(0, summaryChars - 1).replace(/\\s+\\S*$/, '') || summary.slice(0, summaryChars - 1)).trimEnd()}…`", "? `${summary.slice(0, summaryChars - 1).trimEnd()}…`"],
   ['the overflow line loses its count', CORE, "return `- … and ${hidden} more, all listed by \\`memory_list\\`\\n`", "return `- …\\n`"],

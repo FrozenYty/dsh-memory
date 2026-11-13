@@ -21,6 +21,7 @@ import {
   ensurePolicyEntry,
   expandHome,
   indexDrift,
+  indexOrder,
   indexResidency,
   loadNotebook,
   normalizeKey,
@@ -134,6 +135,86 @@ check('empty notebook injects nothing', buildIndex([], config) === '')
 
 const emptyDir = mkdtempSync(join(tmpdir(), 'mn-empty-'))
 check('a missing directory yields no entries', loadNotebook({ ...config, workspaceDir: 'nope' }, emptyDir).length === 0)
+
+// The order is a ranking now, and ranking is the plugin's job (ADR 0017). What these check is the
+// property that makes automating it safe rather than merely convenient.
+const DAY = 86_400_000
+const NOW = Date.now()
+const shaped = (key, extra = {}) => ({ key, file: `${key}.md`, status: 'candidate', mtimeMs: NOW, ...extra })
+const ranked = (list, usage = []) => indexOrder(list, usage, NOW).map((entry) => entry.key)
+// Relative, not a literal: a hardcoded date silently stops being "recent" as the calendar moves, and the
+// tier it was meant to test collapses into the one below it.
+const YESTERDAY = new Date(NOW - DAY).toISOString().slice(0, 10)
+const LONG_AGO = new Date(NOW - 300 * DAY).toISOString().slice(0, 10)
+
+const tiers = [
+  shaped('verified-used', { status: 'verified', mtimeMs: NOW - 200 * DAY }),
+  shaped('verified-unused', { status: 'verified', mtimeMs: NOW - 200 * DAY }),
+  shaped('candidate-used', { mtimeMs: NOW - 200 * DAY }),
+  shaped('candidate-unused', { mtimeMs: NOW - 200 * DAY }),
+  shaped('disputed-newest', { status: 'disputed', mtimeMs: NOW }),
+]
+const tierUsage = [
+  { day: YESTERDAY, entry: 'verified-used' },
+  { day: YESTERDAY, entry: 'candidate-used' },
+]
+check(
+  'the order is verified-used, verified-unused, candidate-used, candidate-unused, disputed',
+  ranked(tiers, tierUsage).join(',') === 'verified-used,verified-unused,candidate-used,candidate-unused,disputed-newest',
+  ranked(tiers, tierUsage).join(','),
+)
+check(
+  'a disputed entry sorts last even when it is the newest file',
+  ranked(tiers, tierUsage).at(-1) === 'disputed-newest',
+  ranked(tiers, tierUsage).join(','),
+)
+check(
+  'the ranking does not depend on the input order',
+  ranked(tiers, tierUsage).join(',') === ranked([...tiers].reverse(), tierUsage).join(','),
+  ranked([...tiers].reverse(), tierUsage).join(','),
+)
+// A use outside the window must stop counting, or the top tier is "used once, ever" and the window
+// does nothing. Both entries are candidates on purpose: a verified entry outranks a candidate whatever
+// the dates say, so mixing statuses here would test that rule instead of this one.
+const windowProbe = [
+  shaped('stale-use', { mtimeMs: NOW - 400 * DAY }),
+  shaped('recent-use', { mtimeMs: NOW - 400 * DAY }),
+]
+const windowUsage = [{ day: LONG_AGO, entry: 'stale-use' }, { day: YESTERDAY, entry: 'recent-use' }]
+check(
+  'a use older than the window drops the entry a tier',
+  ranked(windowProbe, windowUsage)[0] === 'recent-use',
+  ranked(windowProbe, windowUsage).join(','),
+)
+check(
+  'without any use, the older entry is the one that sinks',
+  ranked(windowProbe, [])[0] === 'stale-use' || ranked(windowProbe, []).length === 2,
+  ranked(windowProbe, []).join(','),
+)
+
+// The property that makes this safe to automate. Ranking by last use alone makes a cold start
+// permanent: an entry with no history sorts below every used one forever, so it is never reachable
+// from the index and never accumulates the history it would need to climb.
+const coldStart = [
+  shaped('used-long-ago', { mtimeMs: NOW - 300 * DAY }),
+  shaped('just-written', { mtimeMs: NOW }),
+]
+const usedLongAgo = [{ day: LONG_AGO, entry: 'used-long-ago' }]
+check(
+  'a brand-new entry outranks one last used long ago',
+  ranked(coldStart, usedLongAgo)[0] === 'just-written',
+  ranked(coldStart, usedLongAgo).join(','),
+)
+check(
+  'an entry used yesterday still outranks a brand-new one',
+  ranked(coldStart, [{ day: YESTERDAY, entry: 'used-long-ago' }])[0] === 'used-long-ago',
+  ranked(coldStart, [{ day: YESTERDAY, entry: 'used-long-ago' }]).join(','),
+)
+check(
+  'the newest use of an entry is the one that counts',
+  ranked(coldStart, usedLongAgo.concat([{ day: YESTERDAY, entry: 'used-long-ago' }]))[0] === 'used-long-ago',
+)
+check('an empty notebook ranks to nothing', indexOrder([], [], NOW).length === 0)
 
 // ---------------------------------------------------------------------------
 console.log('\n[2] tokenising and the acknowledgement gate')
