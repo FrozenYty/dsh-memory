@@ -63,6 +63,16 @@ silent one; every entry stays recallable and `memory_list` names them. The defau
 about a hundred entries; at 2800 it named about thirty, and the gap showed up as entries nobody could
 see without asking.
 
+It also gates when `INDEX.md` is re-ranked, and that half exists for the **prompt cache**, not for
+memory. The index is a `systemPrompt.section`, so any change to it invalidates the cache from the first
+changed line — the whole conversation behind it is recomputed. A write changes the index and there is no
+way around that; a read does not change any entry, and must therefore not change the index either. Since
+`usage.jsonl` feeds the ranking, re-ranking on every sync was exactly the path by which one session's
+reads reordered the next session's prompt. So the order is recomputed **only when the notebook no longer
+fits the budget**: below that threshold every entry is named regardless of position, the ranking decides
+nothing, and the order is preserved with new entries on top. Past it, position is the only thing that
+decides who is visible, and the ranking is worth the cache it costs.
+
 A write therefore never fails on budget. It reports `indexResident` and `indexOverflow` instead, so the
 writer learns whether the entry is visible and what it cost. See
 [ADR 0009](adr/09-derived-index-and-write-refusal.md) for the derived index and

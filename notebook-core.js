@@ -613,13 +613,13 @@ export function auditEntries(entries, options = {}) {
  * A directory that does not exist is left alone — installing a memory plugin should not create
  * `.agents/memory/` in every project the agent opens.
  */
-export function ensurePolicyEntry(dir, template) {
+export function ensurePolicyEntry(dir, template, config = {}) {
   if (typeof template !== 'string' || template.length === 0) return false
   if (!existsSync(dir)) return false
   const path = join(dir, 'notebook-policy.md')
   if (existsSync(path)) return false
   writeFileSync(path, template, 'utf8')
-  syncIndexFile(dir)
+  syncIndexFile(dir, undefined, config)
   return true
 }
 
@@ -692,13 +692,51 @@ export function indexOrder(entries, usage = [], now = Date.now()) {
   )
 }
 
-export function syncIndexFile(dir, entries = scanDir(dir)) {
+/**
+ * Rebuild `INDEX.md`, and decide its order.
+ *
+ * **Order is ranked only when it decides something.** The index is a section of the system prompt, so
+ * changing it invalidates the prompt cache from the first changed line onward — every write already pays
+ * that once, unavoidably. Re-ranking on every sync pays it *again* for a different reason: a session that
+ * merely read an entry changes `usage.jsonl`, and the next session's load then reorders the file. So while
+ * the whole notebook fits the budget every entry is named regardless of position, the ranking decides
+ * nothing, and the order is left alone.
+ *
+ * Once it does not fit, position is exactly what decides who is visible, and re-ranking is worth the
+ * cache it costs.
+ */
+export function syncIndexFile(dir, entries = scanDir(dir), config = {}) {
   const indexPath = join(dir, 'INDEX.md')
   if (!existsSync(dir)) return false
-  // The order is computed, not accumulated: every file on disk is ranked on every sync, so a rename,
-  // a status change or a read all land in the same place instead of waiting for someone to tidy up.
-  const wanted = indexOrder(entries, readUsage(dir)).map((entry) => entry.file)
-  if (wanted.length === 0) return false
+  const budget = Number.isFinite(config.indexBudgetChars) ? config.indexBudgetChars : 9000
+
+  const onDisk = new Set(entries.map((entry) => entry.file))
+  const listed = [...new Set(readIndexFiles(dir))].filter((file) => onDisk.has(file))
+  const listedSet = new Set(listed)
+  const added = entries
+    .filter((entry) => !listedSet.has(entry.file))
+    .sort((a, b) => b.mtimeMs - a.mtimeMs)
+    .map((entry) => entry.file)
+  // New entries go to the top, so one that was just written is resident whenever anything is.
+  const preserved = [...added, ...listed]
+  if (preserved.length === 0) return false
+
+  const byFile = new Map(entries.map((entry) => [entry.file, entry]))
+  const costOf = (files) => {
+    const ordered = files.map((file) => byFile.get(file)).filter(Boolean)
+    // The whole index measured without the cut, so "does this fit" is a fact rather than a rendering
+    // artefact: `buildIndex` caps itself at the budget and would otherwise always report a fit.
+    // `workspaceDir` is supplied because the header names the tier, and a caller that passed no config
+    // at all would otherwise crash here rather than getting a length.
+    return buildIndex(ordered, {
+      workspaceDir: '',
+      machineDir: '',
+      ...config,
+      indexBudgetChars: Number.MAX_SAFE_INTEGER,
+    }).length
+  }
+  const wanted =
+    costOf(preserved) <= budget ? preserved : indexOrder(entries, readUsage(dir)).map((entry) => entry.file)
 
   const text = INDEX_PREAMBLE + wanted.map((file) => `- \`${file}\`\n`).join('')
   let current = ''
@@ -976,7 +1014,7 @@ function localToday() {
   return `${now.getFullYear()}-${month}-${day}`
 }
 
-export function writeEntryFile(dir, fields) {
+export function writeEntryFile(dir, fields, config = {}) {
   mkdirSync(dir, { recursive: true })
   const path = join(dir, fields.key + '.md')
   const created = !existsSync(path)
@@ -1022,11 +1060,11 @@ export function writeEntryFile(dir, fields) {
   writeFileSync(path, lines.join('\n'), 'utf8')
   // The index is derived from the directory, so it is rebuilt rather than appended to. Appending
   // was how a line for a deleted file survived and a renamed one was listed twice.
-  syncIndexFile(dir)
+  syncIndexFile(dir, undefined, config)
   return created
 }
 
-export function setStatus(dir, key, status) {
+export function setStatus(dir, key, status, config = {}) {
   const path = join(dir, key + '.md')
   if (!existsSync(path)) throw new Error(`no memory named "${key}"`)
   const raw = readFileSync(path, 'utf8')
@@ -1044,6 +1082,6 @@ export function setStatus(dir, key, status) {
   writeFileSync(path, rebuilt.join('\n') + body.replace(/^\r?\n/, ''), 'utf8')
   // A disputed entry stays in `INDEX.md` — the file exists — but is filtered out of the injected
   // index, so the two views must be rebuilt from the same scan to stay honest.
-  syncIndexFile(dir)
+  syncIndexFile(dir, undefined, config)
   return status
 }

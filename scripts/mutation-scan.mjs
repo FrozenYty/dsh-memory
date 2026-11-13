@@ -30,7 +30,21 @@ const mutations = [
   ['ranking ignores how recently an entry was used', CORE, 'return base + (now - lastUsedMs(entry) <= RECENT_USE_MS ? 0 : 1)', 'return base'],
   ['a new entry no longer outranks a stale use', CORE, 'const sortKey = (entry) => Math.max(lastUsedMs(entry), entry.mtimeMs ?? 0)', 'const sortKey = (entry) => lastUsedMs(entry)'],
   ['the tie-break disappears, so the order is unstable', CORE, '|| (a.file < b.file ? -1 : a.file > b.file ? 1 : 0),', ','],
-  ['the index order stops being recomputed', CORE, 'const wanted = indexOrder(entries, readUsage(dir)).map((entry) => entry.file)', 'const wanted = entries.map((entry) => entry.file)'],
+  // Order is ranked only when it decides something; each half of that needs its own mutation, because a
+  // regression in either one is invisible to the other's test.
+  [
+    'the index is re-ranked even when nothing overflows',
+    CORE,
+    'costOf(preserved) <= budget ? preserved : indexOrder(entries, readUsage(dir)).map((entry) => entry.file)',
+    'indexOrder(entries, readUsage(dir)).map((entry) => entry.file)',
+  ],
+  [
+    'the index is never re-ranked, even when it overflows',
+    CORE,
+    'costOf(preserved) <= budget ? preserved : indexOrder(entries, readUsage(dir)).map((entry) => entry.file)',
+    'preserved',
+  ],
+  ['the budget stops reaching the decision', CORE, 'costOf(preserved) <= budget', 'costOf(preserved) <= 0'],
   // --- the query: what recall matches against -----------------------------
   ['the query is sliced from the front again', CORE, '    const piece = text.slice(-(limit - used))', '    const piece = text.slice(0, limit - used)'],
   ['every message is kept whatever the limit', CORE, 'for (let index = tail.length - 1; index >= 0 && used < limit; index -= 1) {', 'for (let index = tail.length - 1; index >= 0; index -= 1) {'],

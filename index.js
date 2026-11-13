@@ -220,7 +220,7 @@ export function apply(ctx, config) {
       if (seededDirs.has(dir)) continue
       seededDirs.add(dir)
       try {
-        ensurePolicyEntry(dir, POLICY_TEMPLATE)
+        ensurePolicyEntry(dir, POLICY_TEMPLATE, cfg)
       } catch {
         /* a read-only notebook is not an error */
       }
@@ -237,7 +237,7 @@ export function apply(ctx, config) {
       if (syncedDirs.has(dir)) continue
       syncedDirs.add(dir)
       try {
-        syncIndexFile(dir)
+        syncIndexFile(dir, undefined, cfg)
       } catch {
         /* a read-only notebook is not an error */
       }
@@ -533,7 +533,7 @@ export function apply(ctx, config) {
           summary: String(args.summary ?? ''),
           body: body.slice(0, BODY_LIMIT),
           evidence: evidence.slice(0, EVIDENCE_LIMIT),
-        })
+        }, cfg)
         // Every field that gets cut is named in one place. A silent slice at a boundary was the defect
         // twice already — the evidence line lost its conclusion and the query lost the request — and both
         // read as complete afterwards. The list is built from the same constants the slices use, so a
@@ -582,7 +582,7 @@ export function apply(ctx, config) {
         const entry = entriesFor(exec).find((candidate) => candidate.key === key)
         if (entry === undefined) throw new Error(`no memory named "${key}"`)
         const status = args.status === 'verified' ? 'verified' : args.status === 'disputed' ? 'disputed' : 'candidate'
-        setStatus(entry.dir, entry.key, status)
+        setStatus(entry.dir, entry.key, status, cfg)
         return { name: entry.key, status }
       },
     }),
