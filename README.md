@@ -128,7 +128,7 @@ schema, so values are taken as given; the defaults below are applied in code.
 | `showIndex` | `true` | Inject the filename index. |
 | `indexBudgetChars` | `9000` | Ceiling on how many entries are **named** in the index, not on how many the notebook may hold. Entries past it are counted and stay recallable. |
 | `indexSummaryChars` | `60` | Characters of summary per index line. `0` falls back to bare filenames — more entries, less about each. |
-| `recallEnabled` | `false` | Publish a matching entry for the turn. Off by default: a lexical matcher cannot tell "certificate error" from "certificate exam". |
+| `recallEnabled` | `false` | Publish a matching entry for the turn. Off by default for two reasons: a lexical matcher cannot tell "certificate error" from "certificate exam", and the published text is re-evaluated per step, so a turn whose match changes replaces the runtime-context message and invalidates the cache behind it ([ADR 0018](docs/adr/18-prompt-changes-only-where-nothing-is-cached.md)). |
 | `recallBudgetChars` | `1400` | Ceiling on one recall publication. |
 | `maxRecall` | `2` | Maximum entries published for one message. |
 | `minRecallScore` | `4` | Weighted score floor (trigger phrase 5–7, filename 4, title 3, body 1). |
