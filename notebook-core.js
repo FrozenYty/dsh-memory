@@ -717,8 +717,15 @@ export function syncIndexFile(dir, entries = scanDir(dir), config = {}) {
     .filter((entry) => !listedSet.has(entry.file))
     .sort((a, b) => b.mtimeMs - a.mtimeMs)
     .map((entry) => entry.file)
-  // New entries go to the top, so one that was just written is resident whenever anything is.
-  const preserved = [...added, ...listed]
+  // **New entries go to the bottom, not the top.**
+  //
+  // The first line of a prompt section is the most expensive byte in it: measured against the relay, a
+  // change there costs the whole cached prefix (4032 tokens), while a change on the last line costs only
+  // what follows the section (640). Prepending a line shifts every other line, so it costs the same as
+  // rewriting the section — and it buys nothing, because the index is a **session snapshot**: an entry
+  // written now does not appear in this session's index at all, and in the next session's every position
+  // is equally visible. See ADR 0018 and `scripts/cache-probe.mjs`.
+  const preserved = [...listed, ...added]
   if (preserved.length === 0) return false
 
   const byFile = new Map(entries.map((entry) => [entry.file, entry]))

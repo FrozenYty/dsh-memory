@@ -7,6 +7,49 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.23.9] — 2026-11-14
+
+### Changed
+
+**New entries are appended to the index instead of prepended, because the first line of a prompt section
+is the most expensive byte in it.**
+
+With a working probe, four positions measured two or three times each, every run identical:
+
+```
+first line of the system section     4032 of 4032 lost   (3/3)
+last line of the system section       640 of 4032 lost   (2/2)
+head of the history                   576 of 4032 lost   (2/2)
+tail of the history                     0 of 4032 lost   (2/2)
+```
+
+**Strict prefix matching.** A prepended line shifts every existing line, so it costs what rewriting the
+section costs — **4032 tokens against 640, an 84% difference, for a line in the same document.**
+
+**And prepending bought nothing.** The index is a per-session snapshot (`0.23.5`), so an entry written
+now is invisible to this session at any position, and equally visible to the next one.
+
+### Fixed
+
+- **`scripts/cache-probe.mjs` measured its own noise three times**, and each defect looked like cache
+  behaviour rather than a bug:
+  1. three scenarios in one run, contaminating each other through a shared prefix;
+  2. a per-scenario nonce that made them evict each other, so the warm request never hit;
+  3. **a changed marker reused between runs** — the first run cached it, so every later run measured a
+     cache it had created itself. That is why every scenario read 4032 on run one and 0 afterwards.
+  The probe now takes a **unique marker per run** and a retry loop that keeps resending until a baseline
+  exists. **An unvalidated instrument reports its own noise**, which is why the earlier figures were
+  withdrawn rather than explained away.
+- **Four tests asserted the old prepend order** and failed on the change, which is what they were for.
+  They now assert that an append leaves every earlier line exactly where it was.
+
+### Notes
+
+- **`94 mutations, 94 killed, 0 did not apply`** — two new ones guard the append: prepending, and adding
+  nothing at all.
+- **This is the first time measurement pointed at code rather than at documentation.** Everything before
+  tonight corrected a claim; this one corrected a behaviour.
+
 ## [0.23.8] — 2026-11-14
 
 ### Fixed

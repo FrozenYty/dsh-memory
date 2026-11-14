@@ -45,6 +45,10 @@ const mutations = [
     'preserved',
   ],
   ['the budget stops reaching the decision', CORE, 'costOf(preserved) <= budget', 'costOf(preserved) <= 0'],
+  // Appending is a cache decision, not a stylistic one: a prepended line shifts every existing line, and
+  // the first line of a prompt section is the most expensive byte in it (4032 tokens measured against 640).
+  ['a new entry is prepended instead of appended', CORE, 'const preserved = [...listed, ...added]', 'const preserved = [...added, ...listed]'],
+  ['a new entry stops being added at all', CORE, 'const preserved = [...listed, ...added]', 'const preserved = [...listed]'],
   // The per-session index snapshot exists for the prompt cache, so both halves matter: no snapshot at all
   // (a write mid-session disturbs the prefix) and one snapshot shared by every session (the cache is
   // perfect and the notebook never reaches a session that has not seen it).

@@ -241,11 +241,10 @@ check(
   'INDEX.md changed after a read',
 )
 check(
-  'a new entry still goes to the top',
-  (cacheSeed('delta'), syncIndexFile(cacheProbeDir, undefined, cacheWithRoom), readFileSync(join(cacheProbeDir, 'INDEX.md'), 'utf8'))
-    .split('\n')
-    .find((line) => line.startsWith('- '))
-    ?.includes('delta') === true,
+  'a new entry is appended, leaving every earlier line where it was',
+  (cacheSeed('delta'), syncIndexFile(cacheProbeDir, undefined, cacheWithRoom), readFileSync(join(cacheProbeDir, 'INDEX.md'), 'utf8')) ===
+    `${cacheBefore.trimEnd()}\n- \`delta.md\`\n`,
+  'the earlier lines moved, which is what makes the change expensive',
 )
 
 // Overflow is the condition under which the ranking earns its cost. A budget too small to name four
@@ -899,11 +898,14 @@ writeFileSync(join(derived, 'third.md'), '# third\n', 'utf8')
 syncIndexFile(derived)
 listed = readFileSync(join(derived, 'INDEX.md'), 'utf8')
 check('a file written outside the plugin is indexed', listed.includes('`third.md`'), listed)
-// New entries take the top, because residency is finite and what was just learned is the most likely
-// thing to be needed next. Existing entries keep their relative order.
+// New entries go to the **bottom**. The first line of a prompt section is the most expensive byte in it —
+// measured, a change there costs the whole cached prefix while a change on the last line costs only what
+// follows the section — and a prepended line shifts every other line, so it costs the same as rewriting
+// the section. Prepending also buys nothing: the index is a per-session snapshot, so an entry written now
+// is invisible to this session either way, and equally visible to the next one at any position.
 check(
-  'a new entry is placed above the older one, not below it',
-  listed.indexOf('third.md') < listed.indexOf('second.md'),
+  'a new entry is appended below the older ones, not prepended above them',
+  listed.indexOf('third.md') > listed.indexOf('second.md'),
   listed,
 )
 check('the derived index has no stale lines', indexDrift(derived).missing.length === 0)
@@ -937,16 +939,17 @@ check(
   indexResidency(entries, { ...config, indexBudgetChars: 100000 }, { file: entries[0].file, status: 'candidate' }).hidden === 0,
 )
 
-// A fact just written is the most likely thing to be needed next, so it must not be the first thing
-// the budget hides.
-const prependDir = mkdtempSync(join(tmpdir(), 'mn-order-'))
-writeFileSync(join(prependDir, 'older.md'), '# older\n', 'utf8')
-writeFileSync(join(prependDir, 'INDEX.md'), '- `older.md`\n', 'utf8')
-writeFileSync(join(prependDir, 'newer.md'), '# newer\n', 'utf8')
-syncIndexFile(prependDir)
-const ordered = readIndexFiles(prependDir)
-check('a new entry goes to the top of the index', ordered[0] === 'newer.md', ordered.join(','))
-check('the existing order is kept', ordered[1] === 'older.md', ordered.join(','))
+// A new entry is appended rather than prepended: the first line of a prompt section is the most expensive
+// byte in it, so shifting every existing line costs what rewriting the section costs, and the index is a
+// per-session snapshot anyway — this session will not see the new entry at any position.
+const appendDir = mkdtempSync(join(tmpdir(), 'mn-order-'))
+writeFileSync(join(appendDir, 'older.md'), '# older\n', 'utf8')
+writeFileSync(join(appendDir, 'INDEX.md'), '- `older.md`\n', 'utf8')
+writeFileSync(join(appendDir, 'newer.md'), '# newer\n', 'utf8')
+syncIndexFile(appendDir)
+const ordered = readIndexFiles(appendDir)
+check('a new entry is appended to the index', ordered[1] === 'newer.md', ordered.join(','))
+check('and the existing line does not move', ordered[0] === 'older.md', ordered.join(','))
 
 // ---------------------------------------------------------------------------
 console.log('\n[15] health: broken is not the same as empty')

@@ -77,24 +77,29 @@ question — a claim of "inherent" ends the search.
   the same length hits nothing. The field is `usage.prompt_tokens_details.cached_tokens`; the documented
   name `prompt_cache_hit_tokens` is not what this relay sends, and a probe looking only for that name
   concludes, wrongly, that nothing can be measured here.
-- **One measurement of a change, never replicated.** A single run produced:
+- **What replicates.** With a retry loop making a real baseline obtainable, and a **unique changed marker
+  per run**, four positions measured two or three times each, every one identical:
 
   ```
-  warm, byte-identical      cached 2496   (the baseline for the three below)
-  a line changed at 90      cached 1280
-  a line changed at 179     cached 2496
-  a line changed at 0       cached    0
+  first line of the system section     4032 of 4032 lost   (3/3 runs)
+  last line of the system section       640 of 4032 lost   (2/2)
+  head of the history                   576 of 4032 lost   (2/2)
+  tail of the history                     0 of 4032 lost   (2/2)
   ```
 
-  Those numbers fit strict prefix matching exactly — half survives a change in the middle, everything
-  survives a change at the tail, nothing survives a change at the head. **But that run's own baseline was
-  broken**: the warm request reported `cached 0`, so "2496" was itself inferred rather than measured, and
-  the three figures are differences against an assumed number. **Six later attempts to re-run it failed
-  to get a warm hit at all**, on the same code path, with waits up to 18 seconds.
-- **So this ADR rests on the mechanism, not on a number.** The rule follows from how a prefix cache must
-  behave, and the only part that is observation is that this deployment has one. **A future session should
-  treat the 4160-token figure that appeared in this ADR's first version as withdrawn** — it came from a
-  run whose cold and warm baselines were both unreliable.
+  **Strict prefix matching, confirmed.** The cost is everything after the changed byte — no more, and no
+  less. A change at the head is the whole prompt; a change at the tail is nothing.
+- **This is why new entries are appended rather than prepended.** A prepended line shifts every existing
+  line, so it costs what rewriting the section costs: 4032 tokens against 640, an 84% difference. And
+  prepending buys nothing — the index is a per-session snapshot, so an entry written now is invisible to
+  this session at any position, and equally visible to the next one.
+- **Three probe bugs produced three fake findings before this**, and each one looked like cache behaviour
+  rather than a defect: scenarios sharing a prefix, a per-scenario nonce that made them evict each other,
+  and a changed marker reused between runs so that every run after the first measured a cache it had
+  itself created. **A probe is an instrument; an unvalidated instrument reports its own noise.** The
+  `INCONCLUSIVE` exit exists so a broken baseline stops the run instead of becoming a result.
+- **The 4160-token figure in this ADR's first version is withdrawn.** It came from a run whose warm
+  request reported `cached 0`, so the number it was subtracted from was inferred rather than measured.
 - **It does not constrain the harness.** Long sessions are compacted, which rewrites the prompt and
   invalidates everything; capture hints are injected once per session. Neither is this plugin's doing,
   and both will dominate any hit-rate observation.
