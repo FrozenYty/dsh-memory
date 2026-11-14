@@ -64,23 +64,37 @@ question — a claim of "inherent" ends the search.
   snapshot only when the retained value differs"*) — so an unmatched turn costs nothing. But the
   frequency is the caller's, not ours, and it is one more reason the default is off
   ([ADR 0015](15-recall-is-model-driven-by-default.md)).
-- **It is now measured, and it was measured last.** For two versions the reasoning above rested on the
-  mechanism alone, and the ADR said so. A probe against the relay in use settled it — and corrected the
-  claim that it *could not* be settled: the field exists under a name this repository had not looked for.
+- **The mechanism is measured; the size of the cost is not.** The distinction matters, and it was blurred
+  here for a day. What replicates:
 
   ```
-  request 1  index A + history      prompt 4223, cached    0, created 4160
-  request 2  index A + history      prompt 4223, cached 4160, created    0
-  request 3  index B + history      prompt 4223, cached    0, created 4160
+  an identical prompt, sent twice      cold: created 3264, cached 0
+                                       warm: created    0, cached 3264
+  an unrelated prompt of equal size     cold: created 3264, cached 0
   ```
 
-  Request 3 differs from request 2 by **one character, on the last line of the index**. It recomputed the
-  whole 4160-token prefix. **A one-character edit at the front costs the entire conversation behind it**,
-  which is the entire justification for this ADR and is now an observation rather than an inference.
-- **The relay reports cache accounting as `usage.prompt_tokens_details.cached_tokens`**, not as
-  `prompt_cache_hit_tokens`. A probe looking only for the latter name concludes, wrongly, that the
-  deployment cannot be measured — which is what happened here first. The same payload carries
-  `created_cache_tokens`, which is what makes a cold/warm pair interpretable.
+  Prefix caching on this deployment is real, observable, and matches on content — an unrelated prompt of
+  the same length hits nothing. The field is `usage.prompt_tokens_details.cached_tokens`; the documented
+  name `prompt_cache_hit_tokens` is not what this relay sends, and a probe looking only for that name
+  concludes, wrongly, that nothing can be measured here.
+- **One measurement of a change, never replicated.** A single run produced:
+
+  ```
+  warm, byte-identical      cached 2496   (the baseline for the three below)
+  a line changed at 90      cached 1280
+  a line changed at 179     cached 2496
+  a line changed at 0       cached    0
+  ```
+
+  Those numbers fit strict prefix matching exactly — half survives a change in the middle, everything
+  survives a change at the tail, nothing survives a change at the head. **But that run's own baseline was
+  broken**: the warm request reported `cached 0`, so "2496" was itself inferred rather than measured, and
+  the three figures are differences against an assumed number. **Six later attempts to re-run it failed
+  to get a warm hit at all**, on the same code path, with waits up to 18 seconds.
+- **So this ADR rests on the mechanism, not on a number.** The rule follows from how a prefix cache must
+  behave, and the only part that is observation is that this deployment has one. **A future session should
+  treat the 4160-token figure that appeared in this ADR's first version as withdrawn** — it came from a
+  run whose cold and warm baselines were both unreliable.
 - **It does not constrain the harness.** Long sessions are compacted, which rewrites the prompt and
   invalidates everything; capture hints are injected once per session. Neither is this plugin's doing,
   and both will dominate any hit-rate observation.
@@ -100,6 +114,8 @@ question — a claim of "inherent" ends the search.
 - **Two tests hold this in place**: a read does not reorder a notebook that fits, and an entry written
   mid-session stays out of that session's index. Both were confirmed by reverting the change and watching
   them fail.
-- **No test asserts the cache behaviour itself**, and none can: the suite never calls the API. The probe
-  that produced the numbers above lives outside the repository, in a session scratch folder. **Re-running
-  it after a change to prompt injection is the manual step this ADR cannot automate.**
+- **No test asserts the cache behaviour itself**, and none can: the suite never calls the API. `scripts/cache-probe.mjs`
+  is the manual instrument, and its own history is a caution — it reports `INCONCLUSIVE` and exits non-zero
+  when the warm request does not hit, because a probe that reports a difference against a broken baseline
+  manufactures a finding. **Three of its four designs produced numbers that were wrong**, each time by
+  measuring something other than what it claimed.
