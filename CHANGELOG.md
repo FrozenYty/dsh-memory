@@ -7,6 +7,54 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.23.8] — 2026-11-14
+
+### Fixed
+
+**ADR 0018's headline number is withdrawn, and `scripts/cache-probe.mjs` is added.**
+
+`0.23.7` reported "a one-character change at the head recomputed all 4160 cached tokens" as a measurement.
+It came from a single run whose own baseline was broken — the warm request reported `cached 0`, so the
+figure it was subtracted from was inferred, not measured. Six attempts to re-run it failed to get a warm
+hit at all.
+
+What does replicate, across several clean runs:
+
+```
+an identical prompt, sent twice     cold: created 3264, cached 0
+                                    warm: created    0, cached 3264
+an unrelated prompt of equal size    cold: created 3264, cached 0
+```
+
+**Prefix caching is real on this deployment and matches on content.** The field is
+`usage.prompt_tokens_details.cached_tokens` — not `prompt_cache_hit_tokens`, the documented name, which
+is why the first probe concluded the deployment could not be measured at all.
+
+**What a change costs is still not established.** One run produced numbers that fit strict prefix matching
+perfectly (half survives a change in the middle, everything at the tail, nothing at the head), and that
+run's baseline was the broken one. So the ADR now rests on the mechanism and says so, and no figure in
+this repository claims otherwise.
+
+### Added
+
+- **`scripts/cache-probe.mjs`** — the manual instrument, moved out of a scratch folder. It takes one
+  scenario per run (`index`, `index-top`, `recall-head`, `recall-tail`), **exits non-zero with
+  `INCONCLUSIVE` when the warm request does not hit**, and skips cleanly without a key so CI never calls
+  a paid API.
+- **Its comment block records three failed designs.** All three looked correct and all three measured
+  something other than what they claimed: scenarios sharing a prefix and contaminating each other; a
+  per-scenario nonce that made them evict each other instead; and an extra `system` message for isolation
+  that changed the shape of the prompt under test. **The common failure is that a broken baseline still
+  produces a number.**
+
+### Notes
+
+- **This is the second time in two days that a measured claim had to be withdrawn**, and both times the
+  error was reading a plausible number as a fact. The first was "the relay cannot be measured"; this one
+  is a magnitude that came from a zero baseline.
+- **Three verified memory entries** now hold the field names, the key's location, and the caveat that the
+  change-cost measurement does not replicate.
+
 ## [0.23.7] — 2026-11-14
 
 ### Changed
@@ -1136,7 +1184,8 @@ First release. The plugin was built for one notebook and has been running agains
 - Configuration is not schema-validated.
 
 [Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/ea41934...HEAD
-[0.23.7]: https://github.com/FrozenYty/dsh-memory/commit/ea41934
+[0.23.8]: https://github.com/FrozenYty/dsh-memory/commit/ea41934
+[0.23.7]: https://github.com/FrozenYty/dsh-memory/commit/97b78d7
 [0.23.6]: https://github.com/FrozenYty/dsh-memory/commit/a787fc1
 [0.23.5]: https://github.com/FrozenYty/dsh-memory/commit/cd6a81f
 [0.23.4]: https://github.com/FrozenYty/dsh-memory/commit/fb92a00

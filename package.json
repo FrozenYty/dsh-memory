@@ -1,6 +1,6 @@
 {
   "name": "dsh-memory",
-  "version": "0.23.7",
+  "version": "0.23.8",
   "private": true,
   "description": "Your experience, visible to the agent — a markdown memory notebook for DeepSeek Harness. Every entry carries the evidence that proves it, every index line says what it is about, and the agent reads on purpose.",
   "type": "module",
