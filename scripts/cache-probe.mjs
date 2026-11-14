@@ -61,6 +61,30 @@ if (!key) {
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
+/**
+ * Send the same prompt until one of the requests reports it as cached.
+ *
+ * **This loop is the whole reason the probe works.** Six runs failed because the second request came back
+ * `cached 0` — no baseline, no measurement — and none of the obvious causes explained it: not the wait
+ * (18 seconds did not help), not the message role (system and user both cache), not the payload. The
+ * deployment's cache becomes usable on its own schedule, and a probe that sends its warm request once and
+ * hopes is measuring that schedule rather than the thing it claims to measure.
+ *
+ * So it keeps sending the identical prompt until one reports a hit, up to a cap. The requests are free of
+ * each other: each is byte-identical, so whichever one hits is the baseline, and the number of attempts it
+ * took is reported rather than hidden.
+ */
+async function stabilise(build, cap = 6, pauseMs = 8000) {
+  const attempts = []
+  for (let attempt = 1; attempt <= cap; attempt += 1) {
+    const result = await ask(build('A'))
+    attempts.push(result.cached)
+    if (result.cached > 0) return { baseline: result, attempts, stabilised: true }
+    if (attempt < cap) await wait(pauseMs)
+  }
+  return { baseline: attempts.length > 0 ? { cached: 0 } : undefined, attempts, stabilised: false }
+}
+
 async function ask(messages) {
   const response = await fetch(ENDPOINT, {
     method: 'POST',
@@ -126,29 +150,40 @@ console.log(`cache-probe: ${MODEL} at ${ENDPOINT}`)
 console.log(`scenario:    ${scenario.what}\n`)
 
 const cold = await ask(scenario.build('A'))
-await wait(6000)
-const warm = await ask(scenario.build('A'))
-await wait(6000)
-const changed = await ask(scenario.build('B'))
-
 console.log(`  cold, index A   prompt ${cold.prompt}, cached ${cold.cached}, created ${cold.created}`)
-console.log(`  warm, index A   prompt ${warm.prompt}, cached ${warm.cached}, created ${warm.created}`)
-console.log(`  changed, B      prompt ${changed.prompt}, cached ${changed.cached}, created ${changed.created}`)
-console.log('')
 
-if (warm.cached === 0) {
-  console.log('INCONCLUSIVE: the warm request was not cached, so there is no baseline to subtract from.')
-  console.log('              Re-run; do not reason about a number derived from a zero baseline.')
-  console.log('              A single prefix reused three times is what makes this work, so avoid running')
-  console.log('              two probes at once, and leave a pause between runs.')
+const { baseline, attempts, stabilised } = await stabilise(scenario.build)
+if (!stabilised) {
+  console.log(`  warm, index A   never cached across ${attempts.length} identical requests`)
+  console.log('')
+  console.log('INCONCLUSIVE: no request reported a cache hit, so there is no baseline to subtract from.')
+  console.log(`              attempts: ${attempts.join(', ')} cached tokens`)
+  console.log('              Do not reason about a number derived from a zero baseline; re-run later.')
   process.exit(1)
 }
+console.log(`  warm, index A   prompt ${baseline.prompt}, cached ${baseline.cached}, created ${baseline.created}`)
+if (attempts.length > 1) {
+  console.log(`                  (took ${attempts.length} identical requests — ${attempts.join(', ')} —`)
+  console.log('                   the deployment decides when a cache becomes usable, not the clock)')
+}
 
-const lost = warm.cached - changed.cached
-console.log(`RESULT: changing ${scenario.what.split(',')[0]} cost ${lost} tokens.`)
-console.log(`        ${changed.cached} of ${warm.cached} cached tokens survived the change.`)
+await wait(6000)
+
+// **The changed marker must be unique per run.** Reusing one literal makes the second and every later
+// run measure nothing: the first run caches "B", so from then on the "change" hits an existing cache and
+// reports zero. That is exactly what happened here — every scenario read its full prefix as lost on run
+// one and zero on runs two and three, and the pattern looked like cache behaviour rather than a bug in
+// the probe.
+const variant = `B${Date.now().toString(36)}`
+const changed = await ask(scenario.build(variant))
+console.log(`  changed, ${variant.slice(0, 8)}…  prompt ${changed.prompt}, cached ${changed.cached}, created ${changed.created}`)
 console.log('')
-if (lost > warm.cached * 0.5) {
+
+const lost = baseline.cached - changed.cached
+console.log(`RESULT: changing ${scenario.what.split(',')[0]} cost ${lost} tokens.`)
+console.log(`        ${changed.cached} of ${baseline.cached} cached tokens survived the change.`)
+console.log('')
+if (lost > baseline.cached * 0.5) {
   console.log('        The change invalidated most of the prefix. This is what ADR 0018 assumes.')
 } else if (lost <= 64) {
   console.log('        The change cost about one cache block. Position, not the edit, is what matters')
@@ -156,3 +191,6 @@ if (lost > warm.cached * 0.5) {
 } else {
   console.log('        The change invalidated part of the prefix: everything after it, and no more.')
 }
+console.log('')
+console.log('        One run is a hypothesis, not a result. ADR 0018 carries a withdrawn figure that')
+console.log('        came from exactly one run whose baseline was zero. Repeat before believing it.')
