@@ -7,6 +7,53 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.24.0] — 2026-11-15
+
+### Changed
+
+**`memory_usage` reports `sessions` instead of `recalls`.** The old name read as "how many times this
+entry was recalled", and it measured something else — **sessions reached, at most once per session**,
+counting both a read through `memory_read` and (when `recallEnabled` is on) an automatic publication.
+The tool's own description already said so; **the field contradicted it**, and this repository's author
+read the output wrong before noticing.
+
+Breaking: anything parsing `used[].recalls` must read `used[].sessions`.
+
+### Fixed
+
+- **Two architecture documents described the old behaviour.** They said `memory_usage` "reports which
+  entries have never been *published*" — accurate when only recall wrote the log, wrong since reads do.
+  Both now say *reached*.
+- **A typo in the Chinese architecture document** — `哪些被过` for `哪些被读过`.
+
+### Why this came from the data
+
+A read of the running notebook, not of the code:
+
+```
+65 entries · 60 resident · index 5920/9000 chars · overflow 0
+5 disputed · 0 without evidence · 0 stale · 0 index drift
+5 days · 252 session reads · 32 read / 32 never read
+```
+
+**A clean long tail** — 13 entries reached once, one reached 26 times — with every never-read entry
+1–4 days old, which is "written recently and not needed yet", not neglect.
+
+**Position in the index does not predict reading.** Quarters by index order reach:
+
+```
+top 1.8 sessions/entry · second 4.7 · third 1.9 · bottom 1.6
+```
+
+That is not a trend, it is an outlier: the second quarter holds `inspect-dsh-asar-source` (19) and
+`dsh-plugin-reload-next-turn` (17). Every quarter has its own hot entry. **So `0.23.9`'s decision to
+append instead of prepend costs nothing in visibility** — it buys the cache saving for free, which is the
+other half of the evidence that change needed.
+
+**One caveat recorded rather than fixed**: 183 of the 252 records are from 2026-11-11, which is when the
+evaluation scripts ran. They are indistinguishable from real use and inflate the top of the ranking.
+Adding an origin marker to `usage.jsonl` would fix it and is not worth a format change.
+
 ## [0.23.9] — 2026-11-14
 
 ### Changed
@@ -1226,8 +1273,10 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/ea41934...HEAD
-[0.23.8]: https://github.com/FrozenYty/dsh-memory/commit/ea41934
+[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/efa8658...HEAD
+[0.24.0]: https://github.com/FrozenYty/dsh-memory/commit/efa8658
+[0.23.9]: https://github.com/FrozenYty/dsh-memory/commit/efa8658
+[0.23.8]: https://github.com/FrozenYty/dsh-memory/commit/b3b7e61
 [0.23.7]: https://github.com/FrozenYty/dsh-memory/commit/97b78d7
 [0.23.6]: https://github.com/FrozenYty/dsh-memory/commit/a787fc1
 [0.23.5]: https://github.com/FrozenYty/dsh-memory/commit/cd6a81f

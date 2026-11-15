@@ -634,14 +634,15 @@ export function apply(ctx, config) {
               items: {
                 type: 'object',
                 additionalProperties: false,
-                required: ['key', 'recalls'],
+                required: ['key', 'sessions'],
                 properties: {
                   key: { type: 'string' },
-                  recalls: {
+                  sessions: {
                     type: 'number',
-                    description: 'Sessions this entry was published to; suppressed within a session once injected',
+                    description:
+                      'Sessions this entry reached, counted once per session. A read through memory_read counts, and so does an automatic publication when recallEnabled is on — so this is how many sessions needed it, not how many times it was opened. It was named "recalls" before 0.24.0, which read as "times recalled" and is not what it measures.',
                   },
-                  last: { type: 'string', description: 'Most recent day this entry was recalled' },
+                  last: { type: 'string', description: 'Most recent day this entry was reached' },
                 },
               },
             },

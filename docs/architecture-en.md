@@ -95,7 +95,7 @@ See [ADR 0012](adr/12-health-check.md).
 ## Which entries are actually used
 
 Recall writes one line per published entry to `usage.jsonl` beside the entries — a date and an entry
-name, and nothing else. `memory_usage` reports which entries have never been published and which have,
+name, and nothing else. `memory_usage` reports which entries have never been reached and which have,
 counted per entry rather than in aggregate, because a total hides the one entry nobody uses.
 
 The log sits in the notebook, not in a cache, because usage history cannot be rebuilt from the entries.
@@ -367,7 +367,7 @@ habit. A missing `INDEX.md` is not drift: ordering falls back to modification ti
 | The plugin breaks a session on resume | No custom session events; all state is derived or in files |
 | **The plugin silently fails to load** | The host API guard throws; the tool-schema rules are copied into the test suite |
 | **Memory is broken and looks like "nothing matched"** | `memory_health` checks capability separately from results, including whether the notebook is writable |
-| **Dead entries accumulate** | `memory_usage` names the entries recall has never published |
+| **Dead entries accumulate** | `memory_usage` names the entries no session has ever reached |
 
 ## Harness constraints that shaped the design
 
