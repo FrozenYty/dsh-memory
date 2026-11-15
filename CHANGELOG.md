@@ -7,6 +7,31 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.24.1] — 2026-11-15
+
+### Changed
+
+**The icon is redrawn in the palette the other three plugins share.**
+
+`dsh-cleaner`, `dsh-search` and `dsh-team` all use one shape: a `64×64` canvas with a `#1b3a5c`
+rounded card, the glyph in `#7fd1ff`, and the accent in `#ffd479`. This icon was a `32×32` line drawing
+in `#8b5cf6` and `#f59e0b` — a different canvas, no card, and **none of the three hex values**. In the
+plugin list it read as a different product rather than a sibling.
+
+**The notebook is kept, because it says what the plugin is.** What changed is how it is drawn: the frame
+and text lines in the family light-blue with the text at reduced opacity, the spine as a single stroke,
+and the accent spent on a bookmark instead of a dot in the corner.
+
+### Notes
+
+- **It was rendered before it was committed.** A drawn icon nobody has looked at is a guess; the four
+  were redrawn side by side from their own SVG primitives and compared at the size the plugin list uses
+  (44 px) as well as enlarged.
+- **Chromium cannot run in this sandbox** — its mojo platform channel is the same named pipe that breaks
+  a piped `git`, and `--no-sandbox` does not bypass it. PIL was used instead: no SVG support, so each
+  icon's primitives were re-stated, which is enough to judge proportion and placement and is not a
+  faithful render.
+
 ## [0.24.0] — 2026-11-15
 
 ### Changed
@@ -1273,7 +1298,8 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/efa8658...HEAD
+[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/7f0ff74...HEAD
+[0.24.1]: https://github.com/FrozenYty/dsh-memory/commit/7f0ff74
 [0.24.0]: https://github.com/FrozenYty/dsh-memory/commit/efa8658
 [0.23.9]: https://github.com/FrozenYty/dsh-memory/commit/efa8658
 [0.23.8]: https://github.com/FrozenYty/dsh-memory/commit/b3b7e61
