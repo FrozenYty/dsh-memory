@@ -123,7 +123,7 @@ schema, so values are taken as given; the defaults below are applied in code.
 
 | Key | Default | Meaning |
 |---|---|---|
-| `workspaceDir` | `.agents/memory` | Notebook directory, relative to the session working directory. `''` disables this tier. |
+| `workspaceDir` | `''` (→ `~/.agents/memory`) | Notebook directory. Empty means the default: `~/.agents/memory`, the same for every workspace, profile and machine. An absolute or `~/` path overrides it; a relative one is never resolved against the session. |
 | `machineDir` | `''` | Optional machine-wide tier, absolute or `~`-prefixed. The workspace tier wins name collisions. |
 | `showIndex` | `true` | Inject the filename index. |
 | `indexBudgetChars` | `9000` | Ceiling on how many entries are **named** in the index, not on how many the notebook may hold. Entries past it are counted and stay recallable. |

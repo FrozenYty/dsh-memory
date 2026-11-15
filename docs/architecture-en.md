@@ -35,8 +35,8 @@ symptom instead. See [Matching](#matching) for the numbers.
 | Tools | `ctx.tools.register` × 7 | tool schemas only |
 
 Both prompt parts are registered globally, not per agent, because the content is derived from the
-session working directory rather than from the agent's history. Both are pure functions of the
-filesystem plus one cache, so neither writes session events.
+notebook directory — `~/.agents/memory`, the same everywhere — rather than from the agent's history. Both
+are pure functions of the filesystem plus one cache, so neither writes session events.
 
 ## The index is computed, not maintained
 
@@ -136,7 +136,7 @@ govern.
 
 That entry ships with the plugin as `templates/notebook-policy.md`. The plugin seeds it into a
 notebook directory that exists but carries no policy: exclusive create, so an edited copy is never
-overwritten; once per directory per process; and only where `.agents/memory/` already exists, so
+overwritten; once per directory per process; and only where the notebook directory already exists, so
 installing the plugin does not create directories in every project the agent opens. When no policy
 is present, the index header simply does not name one.
 
@@ -152,7 +152,7 @@ when a message mentions memory. See [ADR 0008](adr/08-policy-template-and-seedin
 ```mermaid
 flowchart LR
   U[user message] -->|agent/inbox/claimed| Q[query cache<br/>per session]
-  N[.agents/memory/*.md] --> L[loadNotebook]
+  N[~/.agents/memory/*.md] --> L[loadNotebook]
   L --> I[buildIndex]
   I -->|systemPrompt.section| P[system prompt]
   Q --> M[pickHits]

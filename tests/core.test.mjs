@@ -8,8 +8,8 @@
  *   node tests/core.test.mjs
  */
 import { existsSync, mkdirSync, mkdtempSync, appendFileSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { homedir, tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { apply as pluginApply } from '../index.js'
 import {
@@ -45,8 +45,17 @@ import {
 
 const FIXTURE_ROOT = fileURLToPath(new URL('./fixtures', import.meta.url))
 
+/**
+ * Absolute, not `'notebook'`.
+ *
+ * The directory no longer resolves against a passed working directory — that was the bug ADR 0020 fixes —
+ * so a relative value here would point at `<process cwd>/notebook`, which is not the fixture. **A test that
+ * relies on where it happens to be standing is the same defect the plugin had.**
+ */
+const FIXTURE_NOTEBOOK = join(FIXTURE_ROOT, 'notebook')
+
 const config = {
-  workspaceDir: 'notebook',
+  workspaceDir: FIXTURE_NOTEBOOK,
   machineDir: '',
   showIndex: true,
   indexBudgetChars: 2800,
@@ -135,7 +144,7 @@ check('the summary line costs more than a bare name', index.length > 1000, `${in
 check('empty notebook injects nothing', buildIndex([], config) === '')
 
 const emptyDir = mkdtempSync(join(tmpdir(), 'mn-empty-'))
-check('a missing directory yields no entries', loadNotebook({ ...config, workspaceDir: 'nope' }, emptyDir).length === 0)
+check('a missing directory yields no entries', loadNotebook({ ...config, workspaceDir: join(emptyDir, 'nope') }, emptyDir).length === 0)
 
 // The order is a ranking now, and ranking is the plugin's job (ADR 0017). What these check is the
 // property that makes automating it safe rather than merely convenient.
@@ -563,7 +572,7 @@ pluginApply(
     on: () => () => {},
     get: () => undefined,
   },
-  { workspaceDir: '.' },
+  { workspaceDir: evDir },
 )
 const evExec = { agent: { session: { header: { cwd: evDir } } } }
 const writeTool = evTools.find((tool) => tool.name === 'memory_write')
@@ -754,7 +763,7 @@ check(
 )
 check('an empty template writes nothing', ensurePolicyEntry(join(seedRoot, 'empty'), '') === false)
 
-const seededIndex = buildIndex(scanDir(seedDir), { ...config, workspaceDir: 'notebook' })
+const seededIndex = buildIndex(scanDir(seedDir), { ...config, workspaceDir: FIXTURE_NOTEBOOK })
 check(
   'the index names the policy when one exists',
   seededIndex.includes("`notebook-policy.md` holds this notebook"),
@@ -924,7 +933,16 @@ const tight = buildIndexDetail(entries, { ...config, indexBudgetChars: 400 })
 check('a tight budget hides entries', tight.hidden > 0, JSON.stringify({ shown: tight.shown, hidden: tight.hidden }))
 check('the omission is counted', tight.text.includes(`${tight.hidden} more`), tight.text.slice(-160))
 check('the notice names the way to see them', tight.text.includes('memory_list'), tight.text.slice(-160))
-check('the rendered index still fits its budget', tight.text.length <= 400, `${tight.text.length} chars`)
+// The header names the notebook's absolute path now, because a user must be able to confirm where their
+// data is — and an absolute path is longer than the old relative `'notebook'` was. At a 400-char budget the
+// header alone is ~307, so the total cannot be under 400 any more. The assertion moved to "the overrun is
+// bounded by the header", which is what the budget still guarantees: nothing but the header and one line.
+const headerChars = tight.text.split('\n')[1].length
+check(
+  'the rendered index still fits its budget once the header is counted',
+  tight.text.length <= 400 + headerChars,
+  `${tight.text.length} chars, header ${headerChars}`,
+)
 check('something is shown when anything fits', tight.shown >= 1, `${tight.shown}`)
 check('nothing is dropped from the notebook', loadNotebook(config, FIXTURE_ROOT).length === entries.length)
 check('the text is the detail text', buildIndex(entries, { ...config, indexBudgetChars: 400 }) === tight.text)
@@ -958,9 +976,23 @@ console.log('\n[15] health: broken is not the same as empty')
 // nothing to say both return no hits, and the user concludes the feature is useless rather than
 // broken — so capability is checked separately from the result.
 const unconfigured = diagnoseNotebook({ workspaceDir: '', machineDir: '' }, '.')
-check('an unconfigured notebook says so', unconfigured.status === 'unconfigured', JSON.stringify(unconfigured))
+// An empty config is no longer "unconfigured": the default directory exists as a concept, and on a machine
+// that has used this plugin it exists as a directory too. So the assertion is about **which** directory is
+// named, not about the absence of one — asserting `absent` would fail the moment the user has any notes,
+// which is the normal state rather than a broken one.
+check(
+  'an empty config still names the default directory',
+  unconfigured.dir === join(homedir(), '.agents', 'memory'),
+  JSON.stringify(unconfigured),
+)
+check(
+  'and its status describes the notebook, not the config',
+  ['ok', 'absent', 'degraded'].includes(unconfigured.status),
+  unconfigured.status,
+)
+check('with nothing to complain about', unconfigured.problems.length === 0, JSON.stringify(unconfigured.problems))
 
-const absent = diagnoseNotebook({ ...config, workspaceDir: 'definitely-not-here' }, emptyDir)
+const absent = diagnoseNotebook({ ...config, workspaceDir: join(emptyDir, 'definitely-not-here') }, emptyDir)
 check('a notebook that was never created is absent, not broken', absent.status === 'absent', JSON.stringify(absent))
 check('and it has nothing to complain about', absent.problems.length === 0)
 
@@ -1112,7 +1144,7 @@ pluginApply(
     on: () => () => {},
     get: () => undefined,
   },
-  { workspaceDir: 'notebook' },
+  { workspaceDir: FIXTURE_NOTEBOOK },
 )
 
 check('every tool registers', registered.length >= 6, `${registered.length}`)
@@ -1229,8 +1261,25 @@ check(
   resolveDirs({ workspaceDir: 'ws', machineDir: '~/m' }, '/cwd')[0].includes('ws'),
   JSON.stringify(resolveDirs({ workspaceDir: 'ws', machineDir: '~/m' }, '/cwd')),
 )
-check('nothing configured yields nothing', resolveDirs({ workspaceDir: '', machineDir: '' }, '/cwd').length === 0)
-check('a workspace tier needs a cwd', resolveDirs({ workspaceDir: '.agents/memory', machineDir: '' }, undefined).length === 0)
+check(
+  'nothing configured yields the default directory, not nothing',
+  resolveDirs({ workspaceDir: '', machineDir: '' }, '/cwd').length === 1,
+  JSON.stringify(resolveDirs({ workspaceDir: '', machineDir: '' }, '/cwd')),
+)
+check(
+  'a decoy cwd changes nothing',
+  resolveDirs({ workspaceDir: '', machineDir: '' }, '/cwd')[0] ===
+    resolveDirs({ workspaceDir: '', machineDir: '' }, '/somewhere/else')[0],
+)
+check(
+  'a decoy cwd cannot move even a relative configured value',
+  resolveDirs({ workspaceDir: 'relative', machineDir: '' }, '/cwd')[0] ===
+    resolveDirs({ workspaceDir: 'relative', machineDir: '' }, '/somewhere/else')[0],
+  JSON.stringify([
+    resolveDirs({ workspaceDir: 'relative', machineDir: '' }, '/cwd')[0],
+    resolveDirs({ workspaceDir: 'relative', machineDir: '' }, '/somewhere/else')[0],
+  ]),
+)
 check('a bare tilde expands to the home directory', expandHome('~').length > 1 && !expandHome('~').startsWith('~'))
 check('a tilde path expands and joins', expandHome('~/notes').endsWith(join('', 'notes')))
 check('an absolute path is left alone', expandHome('/abs/path') === '/abs/path')

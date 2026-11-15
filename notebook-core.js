@@ -53,7 +53,35 @@ export function expandHome(p) {
   return p
 }
 
+/**
+ * Where the notebook lives. **Computed on every call, never bound at load time.**
+ *
+ * The order is exactly three legs — a configured field, then `DSH_MEMORY_DATA_DIR`, then
+ * `~/.agents/memory` — and nothing else participates. **Not the workspace, not the profile's default
+ * directory, not the repository's location, not `import.meta.url`.** A data directory that moves is the
+ * one failure a user cannot see: the old notes are still on disk, so a fresh empty notebook reads as
+ * "nothing was ever written" rather than as a bug.
+ *
+ * **`memory`, not `dsh-memory`**: the family names its data directory without the `dsh-` package prefix.
+ * `~/.agents/cleaner/` is where `dsh-cleaner` keeps its trash, so `~/.agents/memory/` is this one's.
+ * See docs/adr/19-one-data-directory-for-every-workspace.md.
+ */
+export function resolveDataDir(config = {}) {
+  const configured = typeof config.workspaceDir === 'string' ? config.workspaceDir.trim() : ''
+  if (configured) return expandHome(configured)
+
+  const fromEnv = (process.env.DSH_MEMORY_DATA_DIR ?? '').trim()
+  if (fromEnv) return expandHome(fromEnv)
+
+  return join(homedir(), '.agents', 'memory')
+}
+
 export function resolveDirs(config, cwd) {
+  // Accepted and deliberately ignored. It stays in the signature because every call site passes it, and
+  // because a parameter saying "the caller may offer a working directory" is the honest description of the
+  // trap: the answer must not depend on it. `void` keeps that from reading as an oversight.
+  void cwd
+
   const dirs = []
   // The same directory reached through both settings would be scanned twice: `memory_usage` reads each
   // directory's log, so its counts would double, and the header would name the notebook twice. Compared
@@ -62,7 +90,7 @@ export function resolveDirs(config, cwd) {
     const normalized = resolve(path)
     if (!dirs.some((existing) => resolve(existing) === normalized)) dirs.push(path)
   }
-  if (config.workspaceDir && cwd) add(resolve(cwd, config.workspaceDir))
+  add(resolveDataDir(config))
   const machine = expandHome(config.machineDir)
   if (machine) add(machine)
   return dirs

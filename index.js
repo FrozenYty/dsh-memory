@@ -89,7 +89,19 @@ const POLICY_TEMPLATE = (() => {
 })()
 
 const DEFAULTS = {
-  workspaceDir: '.agents/memory',
+  /**
+   * **Empty on purpose: "not configured" and "configured to the default" must not be the same value.**
+   * When this held `'.agents/memory'` it was relative, so it resolved against whichever directory the
+   * session happened to open — and the notebook moved with it. The fallback now lives in one place,
+   * `resolveDirs`, and lands on `~/.agents/memory` for every workspace, profile and machine.
+   *
+   * Set it to an absolute path (or a `~/` one) to point the notebook somewhere else. See ADR 0019.
+   */
+  workspaceDir: '',
+  /**
+   * A second, read-only directory scanned alongside the notebook — shared notes across workspaces, off by
+   * default. It never decides where writes go; `resolveDirs(...)[0]` is always the writable notebook.
+   */
   machineDir: '',
   showIndex: true,
   /**

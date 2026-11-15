@@ -12,6 +12,49 @@ takes over the second job from here on so the changelog can stay a release note.
 
 ## 2026-11-16
 
+- **The notebook's directory was whatever workspace happened to be open, and that is now fixed (ADR 0019).**
+  `workspaceDir` defaulted to `'.agents/memory'` — a relative path — and `resolveDirs` did
+  `resolve(cwd, config.workspaceDir)`. So 79 entries lived in the workspace's `.agents/memory` for no
+  better reason than that being the workspace. Move the repository, and the notebook moves with it while the old
+  notes stay behind looking like they were never written. **Nothing errors and nothing warns**; the loss
+  reads as a decision the user made.
+
+  The new order is three legs — configured field, `DSH_MEMORY_DATA_DIR`, `~/.agents/memory` — computed on
+  every call, with `cwd` accepted and `void`-ed. **The cheapest part of the fix was making
+  `workspaceDir` default to `''`**, because while it held a path there was no way to distinguish "the user
+  configured this" from "the default has this value", and the environment leg could never be reached.
+
+- **The directory is `memory`, not `dsh-memory`, and the user had to tell me.** `~/.agents/cleaner/` is
+  where `dsh-cleaner` keeps its trash — the family drops the package prefix. I had written the full
+  package name from the brief's `<插件名>` and never checked what the sibling actually did. **That is the
+  `reuse-the-product-seam` lesson in its cheapest possible form: one `Get-ChildItem` would have settled
+  it, and I wrote three files before looking.**
+
+- **Three tests were quietly relying on where they stood.** Once the default stopped following the process
+  cwd, the evidence-writing tests put `INDEX.md`, `long-evidence.md`, `all-cut.md`, `long-body.md`,
+  `long-title.md` and `short-evidence.md` **into the repository root** — which is how I found them, as
+  untracked files in `git status`. The plugin had exactly this defect; the tests had it too. Every test
+  config now carries an absolute path, and one test asserts that two decoy working directories yield the
+  same directory and the same entry count.
+
+- **The budget test had to change, and that was a real consequence rather than an inconvenience.** The
+  index header names the notebook's absolute path, which is ~70 characters longer than `'notebook'` was.
+  At a 400-character budget the header alone is 307, so `tight.text.length <= 400` became unsatisfiable.
+  **I widened the assertion rather than shortening the path** — knowing where the data lives is the point
+  of this change, and a test that forced it out of the header would have been protecting the wrong thing.
+
+- **The migration was a permissioned operation and I treated it as one.** Writing to `~/.agents/memory`
+  was denied by the workspace fence — **not by an ACL**: `FrozenYty` has `FullControl` there, and
+  `~/.agents/cleaner` already holds files a plugin wrote. So the plugin can write where my shell cannot,
+  which is worth knowing. I asked before moving the data, copied rather than moved, and left both copies
+  of all 80 files.
+
+- **Verified from the code, not the filesystem**: `resolveDataDir` returns the home-relative
+  `~/.agents/memory`; 78 entries load from it (79 `.md` files, one of which is the index);
+  `diagnoseNotebook` reports `status: "ok"` with `problems: []`; and two decoy working directories change
+  neither the directory nor the count.
+
+
 - **The traceability table was already lying in five places, and nothing had noticed (P3-01).** The new
   `scripts/check-traceability.mjs` compares every test name quoted in the table against what the suite and
   the mutation scan actually declare. On its first run it found five rows whose quote exists nowhere:

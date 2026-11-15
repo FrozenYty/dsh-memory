@@ -31,7 +31,7 @@
 | 捕获提示 | `ctx.systemPrompt.context`（`order` 4102） | 窗口填满前为 0 字节 |
 | 工具 | `ctx.tools.register` × 7 | 仅工具 schema |
 
-两段提示都是**全局**注册而非按 agent，因为内容来自会话工作目录，而不是 agent 的历史。两者都是"文件系统 + 一个
+两段提示都是**全局**注册而非按 agent，因为内容来自笔记本目录——`~/.agents/memory`，到处都一样——而不是 agent 的历史。两者都是"文件系统 + 一个
 缓存"的纯函数，所以都不写会话事件。
 
 ## 索引是算出来的，不是维护出来的
@@ -101,7 +101,7 @@ all listed by memory_list`——因为被计数的省略不是静默的省略；
 于是它跟着它所管辖的条目一起走。
 
 这条条目随插件发布为 `templates/notebook-policy.md`。插件把它播种进一个**已经存在但没有政策**的笔记本目录：
-独占创建，所以被编辑过的副本永不被覆盖；每个目录每进程一次；且只在 `.agents/memory/` 已存在的地方，所以装插件
+独占创建，所以被编辑过的副本永不被覆盖；每个目录每进程一次；且只在笔记本目录已存在的地方，所以装插件
 不会在 agent 打开的每个项目里创建目录。没有政策时，索引头就干脆不提它。
 
 被播种的政策是 `status: verified`：它是**被授予的**，不是被观察到的。它带一条 `Evidence:` 行，说明它是政策而非
@@ -115,7 +115,7 @@ all listed by memory_list`——因为被计数的省略不是静默的省略；
 ```mermaid
 flowchart LR
   U[user message] -->|agent/inbox/claimed| Q[query cache<br/>per session]
-  N[.agents/memory/*.md] --> L[loadNotebook]
+  N[~/.agents/memory/*.md] --> L[loadNotebook]
   L --> I[buildIndex]
   I -->|systemPrompt.section| P[system prompt]
   Q --> M[pickHits]
