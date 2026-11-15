@@ -13,11 +13,26 @@ Read, in this order:
 CONTRIBUTING.md  ->  docs/architecture-en.md  ->  the ADR that touches your change
 ```
 
-- The files beat your memory. This repository changes between your sessions; anything you remember
-  may already be wrong.
+- **This repository lives at `DSH_PLUGINS\dsh-memory`, not under `DSH_FILES\`.** The workspace contract
+  puts code that is linked into a profile and runs in every session here, on the grounds that it is
+  infrastructure rather than output. Moving it back would break four junctions and a profile nobody asked
+  you to touch.
+- **Where the work stands is `PLAN.md`; how it got here is `PROGRESS.md`; what an installer gets is
+  `CHANGELOG.md`.** If you were asked to "continue development", read `PLAN.md` first — it is the only
+  place a checkbox lives, and every item there carries a "Done when".
+- **The files beat your memory.** This repository changes between your sessions; anything you remember
+  may already be wrong. Two things it has been wrong about in the past, both now corrected, are worth
+  knowing so they are not re-derived: the cache cost of a prompt change is **not** "everything after it";
+  it is everything after it, measured, and position decides how much. And the reason `recallEnabled`
+  defaults to false is **two** reasons, not one — false positives at 6 in 18, and the cache churn of a
+  per-step re-evaluated context. Both are in ADR 0018 and ADR 0015.
 - When something is unclear, say what is unclear and what would make it clear. Do not guess.
 - For any question about behaviour, the code in `index.js` and `notebook-core.js` is the authority,
   then `README.md`, then `docs/`.
+- **Two git traps have each cost a round.** A branch cut from a branch after a squash merge cannot merge,
+  and GitHub then runs **no CI and reports no error** — an empty check-run list means
+  `mergeable_state: dirty`, not an outage. And `git cherry` reports squash-merged commits as unmerged,
+  because a squash gives them a different patch-id; judge by content instead.
 
 ## 2. The project
 
