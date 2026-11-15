@@ -10,6 +10,35 @@ same reason.
 `CHANGELOG.md`, which carries both the release notes and, in its longer entries, the reasoning. This file
 takes over the second job from here on so the changelog can stay a release note.
 
+## 2026-11-16
+
+- **The repository moved from `DSH_FILES\` to `DSH_PLUGINS\`, and nothing in it changed.** The move was
+  the workspace's decision, not this repository's: `AGENTS.md` §2 grew a **Plugin source** clause holding
+  that code which is linked into a profile and runs in every session is infrastructure rather than output,
+  and therefore does not live among the files a session produces. **The reason is recorded there, in the
+  workspace contract; this entry records that it happened and how it was checked**, because a repository
+  cannot cite its own location as evidence for its own location.
+
+  What moved is the directory. What did not move is anything a reader or an installer sees: no file
+  content, no version, no `package.json`, no profile patch beyond the `link:` targets, which the workspace
+  repointed before this check ran. The four junctions under the profile's `node_modules` were rebuilt and
+  now resolve to the new path.
+
+  Verified: **`node scripts/check.mjs` → 9 of 9, exit 0**, and `--full` → 11 of 11, exit 0, both run from
+  the new path. `grep DSH_FILES` over the whole repository returns **one** hit, and it is prose rather than
+  a path: `tests/fixtures/notebook/low-integrity-label-writes.md` records that at the time of that
+  diagnosis `.agents` carried a low integrity label and `DSH_FILES` and five siblings did not. That
+  sentence was true when written, `DSH_FILES` still exists, and editing it would damage the evidence rather
+  than update it. `package.json` reads through the junction
+  (`dsh-memory`, `0.25.0`), so the link is live rather than a stale copy.
+
+- **The gate turned out to be location-independent, which was not designed for and is worth keeping.**
+  `scripts/check.mjs` resolves the repository root from `import.meta.url`, and `check-commit-messages.mjs`
+  derives its range from `git merge-base origin/main HEAD`. Neither hardcodes a path, so the move needed no
+  edit to either — **the first real event this gate met was one it could not have been written to expect,
+  and it passed because it asks the filesystem instead of remembering.** That is the property
+  `AGENTS.md`'s "look before you move" is trying to produce, observed rather than asserted.
+
 ## 2026-11-15
 
 - **One local entry point, `scripts/check.mjs`, and it contains no checks (P0-03).** It runs the ten
