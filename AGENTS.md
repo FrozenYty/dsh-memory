@@ -54,8 +54,24 @@ The load-bearing constraint: **this is a profile-linked bundle, so it cannot imp
   permanent history.
 - **Do not silently change a default.** A default is documented in both READMEs and in
   `docs/architecture-en.md`; change all three or none.
+- **Three records, three different questions — put a sentence in the one whose question it answers.**
+  `PLAN.md` answers *what is still owed, and how each item is proved*: the task board, and the only place
+  a checkbox lives. `PROGRESS.md` answers *what changed, why, and how it was checked that day*: an
+  append-only log, one dated entry per day, written for whoever has to understand the decision later.
+  `CHANGELOG.md` answers *what a person who installs this bundle gets*: the release note, per version. So
+  a change with a user-visible effect adds a release note; a change whose **reason** or **evidence** would
+  otherwise be lost adds a log entry; a change to the remaining work edits the task board — and nothing is
+  written in two of them for the same reason. Both `PROGRESS.md` and a released `CHANGELOG.md` section are
+  append-only.
 
 ## 5. Verify before reporting
+
+```sh
+node scripts/check.mjs                      # everything CI runs, in order, one exit code
+```
+
+That is the gate. It runs the commands below and names the one that failed; reach for a single command
+only to investigate a failure it reported.
 
 ```sh
 node tests/core.test.mjs                    # behavioural checks
@@ -67,6 +83,16 @@ node scripts/check-index.mjs --dir tests/fixtures/notebook      # INDEX.md agree
 node --check index.js                 # syntax
 node scripts/check-commit-messages.mjs --range origin/main..HEAD   # no tool co-author
 ```
+
+`node scripts/check.mjs --full` adds the two gates that are too slow to run every time — the mutation
+scan (which edits the source it mutates and restores it) and the assertion-strength check.
+
+`node scripts/check.mjs --instruments` adds the two **instruments**, which print a number rather than a
+verdict: the hostile-phrasing set (it exits 1 whenever any "silent" case fires, and currently reports 6 of
+18 — that is the measurement keeping `recallEnabled` false, not a defect) and the cache probe, which needs
+`DO_API_KEY` and the network. **Running either inside a gate would report a working system as broken.**
+The hostile set also needs `--dir <a real notebook>`, since every query targets an entry only the author's
+notebook contains; without it the step is skipped and says so.
 
 All of these run in CI and block a merge. A passing local run proves less than it looks: `node
 --check` is not a type check, and the document checks never look at JavaScript.

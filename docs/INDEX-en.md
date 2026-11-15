@@ -18,6 +18,8 @@ else.
 | Why was a decision made the way it is? | [adr/](adr/) — one file per decision |
 | How do I branch, commit, and pass CI? | [CONTRIBUTING.md](../CONTRIBUTING.md) |
 | I am an AI assistant starting work here | [AGENTS.md](../AGENTS.md) |
+| What is still owed, and how is each item proved? | [PLAN.md](../PLAN.md) |
+| What changed on a given day, why, and how was it checked? | [PROGRESS.md](../PROGRESS.md) |
 | What changed between versions? | [CHANGELOG.md](../CHANGELOG.md) |
 | What does a term mean here? | [glossary-en-zh.md](glossary-en-zh.md) |
 | What do the tests cover, and how is that proved? | [test-plan-en.md](test-plan-en.md) |

@@ -76,6 +76,10 @@ run `git fetch && git reset --hard origin/main` afterwards. That cost is why the
 
 Every job below blocks the merge. The list grows; the rule does not.
 
+**Run `node scripts/check.mjs` first.** It runs every job in this table, in order, and names the one that
+failed — the single command is the gate. The individual commands below are how you investigate a failure
+it reported, and how you run one job while changing it.
+
 | Job | Command | Fix |
 |---|---|---|
 | Syntax | `node --check index.js && node --check notebook-core.js` | read the reported line |
@@ -86,6 +90,20 @@ Every job below blocks the merge. The list grows; the rule does not.
 | Evidence | `node scripts/check-evidence.mjs --dir tests/fixtures/notebook` | add the missing `Evidence:` line |
 | Index | `node scripts/check-index.mjs --dir tests/fixtures/notebook` | list the file, or remove the stale line |
 | Co-author | `node scripts/check-commit-messages.mjs --range <base>..HEAD` | remove the trailer |
+
+`node scripts/check.mjs --full` adds the two slower gates: the mutation scan and the assertion-strength
+check. It reports what it did not run, so a short run is never mistaken for a complete one. The mutation
+scan **edits the source it mutates and restores it** — do not interrupt it.
+
+`node scripts/check.mjs --instruments` adds the two **instruments**, which report a number rather than a
+verdict: the hostile-phrasing set and the cache probe. Both are excluded from the gates on purpose —
+`eval-hostile` exits 1 when a "silent" case fires, which is a finding to read rather than a failure to fix,
+and `cache-probe` calls a paid API. The hostile set needs `--dir <a real notebook>` and is skipped with
+that reason when you do not give one.
+
+The aggregator holds no rules of its own: it runs these scripts and reports what they said. A rule that
+exists only in `check.mjs` would be a second copy of something, and this repository's recurring defect is
+a fact kept in two places.
 
 There is no linter and no formatter. The code is plain ES modules with no dependencies, and adding
 a toolchain to check 600 lines would cost more than it prevents. Consistency is the reviewer's job.
