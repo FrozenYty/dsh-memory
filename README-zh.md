@@ -106,7 +106,7 @@ dsh plugin --profile <profile> add <path-to-this-checkout>
 
 | 键 | 默认 | 含义 |
 |---|---|---|
-| `workspaceDir` | `.agents/memory` | 笔记本目录，相对会话工作目录。`''` 关闭这一层。 |
+| `workspaceDir` | `''`（→ `~/.agents/memory`） | 笔记本目录。留空即默认：`~/.agents/memory`，每个工作区、profile、机器都是同一个答案。绝对路径或 `~/` 开头可覆盖；相对路径不会被按会话解析。 |
 | `machineDir` | `''` | 可选的机器级层，绝对路径或以 `~` 开头。同名冲突时工作区层优先。 |
 | `showIndex` | `true` | 是否注入文件名索引。 |
 | `indexBudgetChars` | `9000` | 索引里**列出多少条**的上限，不是笔记本能存多少条。超出的部分被计数，仍然可被召回。 |

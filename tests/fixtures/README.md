@@ -23,4 +23,4 @@ that changes when the thing it tests does not is not a fixture.
 ## Where the real notebook is
 
 Not in this repository. It lives wherever the plugin is configured to look — by default
-`.agents/memory` under the session working directory — and it is the user's, not the project's.
+`~/.agents/memory` — and it is the user's, not the project's.

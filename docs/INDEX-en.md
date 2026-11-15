@@ -98,6 +98,7 @@ else.
 | [0016](adr/16-index-carries-summaries.md) | The index carries a one-line summary per entry | Accepted |
 | [0017](adr/17-index-order-from-use.md) | The index order is ranked from trust status and recency of use | Accepted |
 | [0018](adr/18-prompt-changes-only-where-nothing-is-cached.md) | An injected prompt value may change only at session start, where no cache exists yet | Accepted |
+| [0019](adr/19-one-data-directory-for-every-workspace.md) | The notebook lives at `~/.agents/memory` for every workspace, profile and machine | Accepted |
 
 Add a row here whenever an ADR is added. `scripts/check-docs.mjs` fails the build when an ADR
 exists on disk but is not listed in this table.

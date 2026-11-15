@@ -7,6 +7,42 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.27.0] — 2026-11-16
+
+### Changed — **the notebook moved, and it will not move again**
+
+**Your notes now live at `~/.agents/memory`, on every machine, in every workspace, under every profile.**
+
+Before this, the default was the relative path `.agents/memory` resolved against whichever directory the
+session opened. So the notebook was wherever you happened to be — and a repository that moved took it
+along, leaving the old notes behind looking like they had never been written. **Nothing errored. Nothing
+warned.** The loss would have read as a decision.
+
+The order is now exactly three legs, computed on every call rather than bound at load time:
+
+```
+a configured workspaceDir  →  DSH_MEMORY_DATA_DIR  →  ~/.agents/memory
+```
+
+**The workspace, the profile's default directory, the repository's location, `import.meta.url` and
+`__dirname` do not participate.** `resolveDirs` still accepts a working directory and ignores it.
+
+If you had notes at the old location they were **copied, not moved** — both copies exist until you remove
+the old one deliberately. The index header names the path it is reading, so you can always confirm.
+
+### Also
+
+- **`workspaceDir` defaults to empty**, so "unconfigured" and "configured to the default" are no longer
+  the same value — otherwise the environment variable could never be reached.
+- **The directory is `memory`, not `dsh-memory`**, matching the family: `~/.agents/cleaner/` is where
+  `dsh-cleaner` keeps its trash.
+- **The index header now shows an absolute path**, costing ~70 characters of prompt prefix. The budget
+  test's assertion changed accordingly; the path is not something to hide.
+- **Three tests were depending on where they stood.** They wrote `INDEX.md` and four entries into the
+  repository root once the default stopped following the process. Every test config now carries an
+  absolute path.
+- See [ADR 0019](docs/adr/19-one-data-directory-for-every-workspace.md).
+
 ## [0.26.0] — 2026-11-16
 
 ### Added
