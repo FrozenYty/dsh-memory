@@ -985,8 +985,8 @@ export function usageReport(entries, usage) {
     never: live.filter((entry) => !counts.has(entry.key)).map((entry) => entry.key),
     used: live
       .filter((entry) => counts.has(entry.key))
-      .map((entry) => ({ key: entry.key, recalls: counts.get(entry.key), last: lastDay.get(entry.key) ?? '' }))
-      .sort((a, b) => b.recalls - a.recalls),
+      .map((entry) => ({ key: entry.key, sessions: counts.get(entry.key), last: lastDay.get(entry.key) ?? '' }))
+      .sort((a, b) => b.sessions - a.sessions),
   }
 }
 

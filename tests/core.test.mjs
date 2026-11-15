@@ -1039,7 +1039,7 @@ check(
 )
 
 const usage = usageReport(entries, usageRows)
-check('a recalled entry is counted', usage.used.some((row) => row.key === usedKey && row.recalls === 2), JSON.stringify(usage.used))
+check('a reached entry is counted', usage.used.some((row) => row.key === usedKey && row.sessions === 2), JSON.stringify(usage.used))
 check('an entry never recalled is named', usage.never.includes(unusedKey), JSON.stringify(usage.never))
 check('the entry that was recalled is not in never', !usage.never.includes(usedKey))
 check('disputed entries are not reported as unused', usageReport([{ ...entries[0], status: 'disputed' }], []).never.length === 0)

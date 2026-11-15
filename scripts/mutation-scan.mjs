@@ -49,6 +49,10 @@ const mutations = [
   // the first line of a prompt section is the most expensive byte in it (4032 tokens measured against 640).
   ['a new entry is prepended instead of appended', CORE, 'const preserved = [...listed, ...added]', 'const preserved = [...added, ...listed]'],
   ['a new entry stops being added at all', CORE, 'const preserved = [...listed, ...added]', 'const preserved = [...listed]'],
+  // The field name is the whole point of 0.24.0: `recalls` read as "times recalled" while measuring
+  // "sessions reached", and the tool's own description contradicted it.
+  ['the usage row is reported without its session count', CORE, "sessions: counts.get(entry.key)", "sessions: undefined"],
+  ['the usage row stops being sorted by reach', CORE, '(a, b) => b.sessions - a.sessions', '(a, b) => 0'],
   // The per-session index snapshot exists for the prompt cache, so both halves matter: no snapshot at all
   // (a write mid-session disturbs the prefix) and one snapshot shared by every session (the cache is
   // perfect and the notebook never reaches a session that has not seen it).
