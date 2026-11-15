@@ -12,6 +12,44 @@ takes over the second job from here on so the changelog can stay a release note.
 
 ## 2026-11-16
 
+- **The traceability table was already lying in five places, and nothing had noticed (P3-01).** The new
+  `scripts/check-traceability.mjs` compares every test name quoted in the table against what the suite and
+  the mutation scan actually declare. On its first run it found five rows whose quote exists nowhere:
+
+  | row | quoted | actually |
+  |---|---|---|
+  | ADR 0005 | `a memory needs evidence` | `the entry carries its evidence` |
+  | ADR 0009 | `index is derived, not hand-maintained` | `the derived index has no stale lines` |
+  | ADR 0012 | `broken is not the same as empty` | `a notebook that was never created is absent, not broken` |
+  | ADR 0014 | `the budget caps residency, not capacity` | `index respects the char budget` |
+  | ADR 0015 | `a read through the tool is counted as usage` | `a reached entry is counted` |
+
+  **This is the most expensive kind of stale reference**, because a row pointing at nothing is
+  indistinguishable from a row pointing at something — the table is read *as* evidence, and it was
+  evidence for a suite that no longer existed in that shape.
+
+- **The check found its own blind spot before the PR did.** A first version read only
+  `traceability-en.md`; the Chinese file is a translation of the same rows and would have been left
+  unguarded. Extending it to both was not politeness — **guarding one copy of a fact is exactly the defect
+  the table itself had just exhibited.**
+
+- **The `(§12)`, `(§15)`, `(§13)`, `(§20)` markers in those rows pointed at nothing either.** They occur
+  nowhere else in the repository: `test-plan-en.md` numbers its sections `## 1.`, and the suite has no
+  numbered sections. Removed with the names. **A check cannot police that kind of pointer** — it is a
+  citation to a document that no longer has that shape — so it is recorded rather than guarded, which is
+  the same choice the traceability table itself makes in its second section.
+
+- **Two mistakes of my own, both already written down in the workspace contract.** `node -e` inside
+  PowerShell was eaten three times tonight (quotes become `\"`, `||` becomes a pipeline), and a
+  `Get-ChildItem -Recurse -Include *.mjs,*.js` search silently matched **zero files** without a trailing
+  `\*` on the path, which produced a confident and wrong "none of these exist anywhere". **§7 of the
+  workspace `AGENTS.md` had just been written for the first one, and it was still hit** — a rule that is
+  read does not replace a habit that is formed. The second is new and belongs in that section.
+
+- **`check.mjs` is now 10 steps and CI carries the tenth.** Verified by renaming one label in the suite:
+  the check exits 1 naming `docs/traceability-en.md:21  ADR 0005  "the entry carries its evidence"`, and
+  restoring the label returns it to 0.
+
 - **The repository moved from `DSH_FILES\` to `DSH_PLUGINS\`, and nothing in it changed.** The move was
   the workspace's decision, not this repository's: `AGENTS.md` §2 grew a **Plugin source** clause holding
   that code which is linked into a profile and runs in every session is infrastructure rather than output,

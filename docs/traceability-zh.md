@@ -19,12 +19,12 @@
 | [0005](adr/05-trust-status-and-mandatory-evidence.md) 每次写入都带证据 | 空 `evidence` 直接抛错；`an entry without an Evidence line is reported` | 行为 |
 | [0006](adr/06-evidence-audit-by-age.md) 按年龄审计，从不执行 | `age stops being reported`（变异）、`entries age after one day`（变异）。**没有任何东西会去跑记录下来的命令**——那就是这个决定本身，而它的执行方式正是**没有** `exec` 调用 | 变异 |
 | [0008](adr/08-policy-template-and-seeding.md) 政策随插件发布并播种 | `the bundled policy template ships`、`a second seed is a no-op`、`an edited policy is never overwritten`、`an existing policy is overwritten`（变异）、`the policy template stops shipping`（变异） | 行为 + 变异 |
-| [0009](adr/09-derived-index-and-write-refusal.md) 索引是派生的 | `index is derived, not hand-maintained`（§12）、`the notebook order stops following INDEX.md`（变异） | 行为 + 变异 |
+| [0009](adr/09-derived-index-and-write-refusal.md) 索引是派生的 | `the derived index has no stale lines`、`the notebook order stops following INDEX.md`（变异） | 行为 + 变异 |
 | [0011](adr/11-judgement-set-for-recall.md) 对照写下来的判断集衡量 | `tests/qrels.json` 存在、被两个互不相关的套件读取，且 `scripts/eval-recall.mjs` 报告 52/52 与 24/24 | 判断集 |
-| [0012](adr/12-health-check.md) 能力诊断与结果分开 | `broken is not the same as empty`（§15）；`absent is reported as broken`（变异） | 行为 + 变异 |
+| [0012](adr/12-health-check.md) 能力诊断与结果分开 | `a notebook that was never created is absent, not broken`；`absent is reported as broken`（变异） | 行为 + 变异 |
 | [0013](adr/13-usage-counts.md) 按条目计数，不记录别的 | `the log records a day and an entry name and nothing else`、`no query text reaches the log`、`the usage count stops being per-entry`（变异） | 行为 + 变异 |
-| [0014](adr/14-index-budget-is-residency.md) 预算限制常驻条数 | `the budget caps residency, not capacity`（§13）；`only one hit is ever returned`（变异） | 行为 + 变异 |
-| [0015](adr/15-recall-is-model-driven-by-default.md) 默认不做自动召回 | `DEFAULTS` 里的 `recallEnabled: false`；`a read through the tool is counted as usage`（§20）让"模型主动读"这条路可测量；`tests/hostile.json` 是这个决定的证据 | 行为 |
+| [0014](adr/14-index-budget-is-residency.md) 预算限制常驻条数 | `index respects the char budget`；`only one hit is ever returned`（变异） | 行为 + 变异 |
+| [0015](adr/15-recall-is-model-driven-by-default.md) 默认不做自动召回 | `DEFAULTS` 里的 `recallEnabled: false`；`a reached entry is counted` 让"模型主动读"这条路可测量；`tests/hostile.json` 是这个决定的证据 | 行为 |
 | [0016](adr/16-index-carries-summaries.md) 索引携带摘要 | `the summary reaches the index`、`a summary in the frontmatter wins over the heading`、`a summary is not carried across an update`（变异）、`unknown frontmatter keys are dropped`（变异） | 行为 + 变异 |
 
 ## 2. 只是约定、没有机制的决定

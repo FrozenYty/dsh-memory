@@ -89,6 +89,7 @@ it reported, and how you run one job while changing it.
 | Docs | `node scripts/check-docs.mjs` | list the ADR, fix the switcher, fix the link, add the missing translation, record the version, document the key, write the English README in English |
 | Evidence | `node scripts/check-evidence.mjs --dir tests/fixtures/notebook` | add the missing `Evidence:` line |
 | Index | `node scripts/check-index.mjs --dir tests/fixtures/notebook` | list the file, or remove the stale line |
+| Traceability | `node scripts/check-traceability.mjs` | fix the quoted name, or say in the row why the decision now has no test |
 | Co-author | `node scripts/check-commit-messages.mjs --range <base>..HEAD` | remove the trailer |
 
 `node scripts/check.mjs --full` adds the two slower gates: the mutation scan and the assertion-strength

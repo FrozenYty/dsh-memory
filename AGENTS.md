@@ -95,6 +95,7 @@ node scripts/check-paths.mjs          # no machine-specific paths in any documen
 node scripts/check-docs.mjs           # ADRs, links, locales, version, config, policy copies, README language
 node scripts/check-evidence.mjs --dir tests/fixtures/notebook   # evidence completeness and age
 node scripts/check-index.mjs --dir tests/fixtures/notebook      # INDEX.md agrees with the directory
+node scripts/check-traceability.mjs   # every test name quoted in the traceability table exists
 node --check index.js                 # syntax
 node scripts/check-commit-messages.mjs --range origin/main..HEAD   # no tool co-author
 ```
