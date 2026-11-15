@@ -94,6 +94,7 @@ const steps = [
   { name: 'documents · ADRs, links, locales, version, policy copies', script: 'scripts/check-docs.mjs' },
   { name: 'notebook · evidence completeness and age', script: 'scripts/check-evidence.mjs', args: ['--dir', 'tests/fixtures/notebook'] },
   { name: 'notebook · INDEX.md agrees with its directory', script: 'scripts/check-index.mjs', args: ['--dir', 'tests/fixtures/notebook'] },
+  { name: 'documents · every quoted test name exists', script: 'scripts/check-traceability.mjs' },
   {
     name: 'history · no tool co-author in the commits',
     script: 'scripts/check-commit-messages.mjs',

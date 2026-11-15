@@ -7,6 +7,42 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.26.0] — 2026-11-16
+
+### Added
+
+**`node scripts/check-traceability.mjs` — every test name quoted in the traceability table must exist.**
+
+`docs/traceability-en.md` is the document that says *which test holds which decision in place*. It quotes
+test names in backticks, and **nothing checked that those names exist** — a rename left the row pointing
+at nothing, and a row that points at nothing reads exactly like a row that points at something.
+
+**It found five such rows on its first run.** They were not hypothetical: names had been reworded in the
+suite and the table was never updated.
+
+| row | quoted | actually |
+|---|---|---|
+| ADR 0005 | `a memory needs evidence` | `the entry carries its evidence` |
+| ADR 0009 | `index is derived, not hand-maintained` | `the derived index has no stale lines` |
+| ADR 0012 | `broken is not the same as empty` | `a notebook that was never created is absent, not broken` |
+| ADR 0014 | `the budget caps residency, not capacity` | `index respects the char budget` |
+| ADR 0015 | `a read through the tool is counted as usage` | `a reached entry is counted` |
+
+Both rows and both language tables are fixed, and the check guards **both tables** — the Chinese file is a
+translation of the same rows, so a rename breaks it identically, and guarding one copy is the defect this
+repository keeps producing.
+
+### Notes
+
+- **The check found its own blind spot.** A first version read only the English table; extending it to
+  both was not a nicety, it was the same one-fact-two-places problem the table itself suffers from.
+- **The `(§12)`, `(§15)`, `(§13)`, `(§20)` markers in those rows pointed at nothing either.** They appear
+  nowhere else in the repository — not in `test-plan-en.md`, whose sections are numbered `## 1.`, and not
+  in the suite. Removed with the names. **A check cannot police that kind of pointer**, so it is recorded
+  here rather than guarded.
+- **`check.mjs` is now 10 steps** and CI carries the new one. A rename in the suite makes it exit 1 naming
+  the file, line, ADR and quote — verified by renaming one and restoring it.
+
 ## [0.25.0] — 2026-11-15
 
 ### Added

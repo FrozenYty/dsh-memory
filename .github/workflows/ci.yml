@@ -43,6 +43,9 @@ jobs:
       - name: Index agrees with the directory
         run: node scripts/check-index.mjs --dir tests/fixtures/notebook
 
+      - name: Every quoted test name exists
+        run: node scripts/check-traceability.mjs
+
       - name: No tool credited as a co-author
         if: github.event_name == 'pull_request'
         run: node scripts/check-commit-messages.mjs --range "origin/${{ github.base_ref }}..HEAD"

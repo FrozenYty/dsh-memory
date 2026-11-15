@@ -70,9 +70,11 @@ behind it. This phase is about not paying for nothing.
 
 ### P3 — What is still owed
 
-- [ ] **P3-01** The traceability table is not machine-checked.
+- [x] **P3-01** The traceability table is not machine-checked.
   `docs/traceability-en.md` names tests in prose; renaming a test leaves the row silently pointing at
   nothing. Done when a check fails on a table row that names a test which does not exist.
+  *(Done 2026-11-16: `scripts/check-traceability.mjs` found five such rows on its first run. It checks
+  both language tables, and a rename in the suite makes it exit 1 naming the file, line, ADR and quote.)*
 - [ ] **P3-02** `extractQuery` keeps the newest message's tail; a single message over the limit still loses
       its beginning.
   Acceptable for a paste, unmeasured for a long instruction. Done when a 3000-character message that ends
