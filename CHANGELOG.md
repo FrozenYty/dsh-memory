@@ -7,6 +7,66 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.25.0] — 2026-11-15
+
+### Added
+
+**`node scripts/check.mjs` — one local entry point for every check this repository has.**
+
+The repository was not short of checks; it was short of a door. CI ran ten commands one by one, and
+running the same gate locally meant typing them all. This runs them in order, reports each by name, and
+exits non-zero naming the step that failed.
+
+**It contains no checks.** Every rule still lives in the script that owns it — a second copy in the
+aggregator would be a second thing to keep in step, which is this repository's recurring defect. Its own
+comment block is the only prose in it; the body runs `spawnSync` and records exit codes.
+
+```
+node scripts/check.mjs                # the set CI runs, plus the syntax pass — 9 steps
+node scripts/check.mjs --full         # adds mutation-scan and assertion-strength
+node scripts/check.mjs --instruments  # adds eval-hostile and cache-probe: numbers, not verdicts
+node scripts/check.mjs --list         # print the plan and exit
+```
+
+**Two things are separated by kind, not by speed.** `--full` holds gates: they exit non-zero only when
+something is wrong. `--instruments` holds the two scripts that print a **number** — `eval-hostile` exits 1
+whenever a "silent" case fires, and it currently reports 6 of 18, which is the measurement that keeps
+`recallEnabled` false rather than a defect to fix; `cache-probe` calls a paid API. **Running either inside
+a gate would report a working system as broken.** Both groups are named in the output of a plain run, so a
+short run cannot be mistaken for a complete one, and `eval-hostile` is skipped with its reason when no
+`--dir` is given, because every query it makes targets an entry only the author's notebook contains.
+
+**`mutation-scan` takes about five seconds, not the ten minutes assumed when this was planned.** The scan
+runs the suite once per mutation against a process that is already warm. That changes nothing about the
+design and everything about the documentation, which claimed otherwise until it was run.
+
+### Added
+
+**`PLAN.md` and `PROGRESS.md`**, matching the sibling plugins, with the three records given distinct jobs
+in `AGENTS.md` §4: the task board answers *what is still owed and how each item is proved*, the progress
+log answers *what changed and how it was checked that day*, and `CHANGELOG.md` answers *what an installer
+gets*.
+
+**The earlier reasoning — that this repository did not need a task ledger because it is one person's and
+conversation-driven — was defensible, and it was never written down.** Every new session re-derived it,
+and the last one asked for these files directly. A decision that is not recorded is re-litigated, which
+costs more than the file does.
+
+### Notes
+
+- **Four attempts to capture a child process failed before the fifth worked, and the working shape was
+  already in this repository.** This sandbox denies the named pipe a captured child needs:
+  `encoding: 'utf8'` gives `stdout: undefined`; `stdio: 'pipe'` gives `error: EPERM spawnSync …`;
+  `cmd /c "… > file"` re-escapes quotes or rejects the redirected path. **`check-commit-messages.mjs`
+  solves it by handing the child a file descriptor — `stdio: ['ignore', out, err]`** — and that is what
+  the aggregator uses. Four rounds were spent guessing at quoting; the answer was one `openSync` away, in
+  a sibling script.
+- **Two premises of the request for this work did not survive checking**, and are recorded rather than
+  worked around: CI also runs `tests/core.test.mjs`, so the aggregate covers seven checks and not six; and
+  `cache-probe.mjs` cannot sit behind `--full` while the gate is required to touch no network.
+- **`check-paths.mjs` failed on this change's own `PROGRESS.md`**, which quoted an absolute interpreter
+  path in an error message. Reworded. The gate catching its own documentation is the rule working.
+
 ## [0.24.1] — 2026-11-15
 
 ### Changed
@@ -1298,7 +1358,8 @@ First release. The plugin was built for one notebook and has been running agains
 - Matching is lexical. There is no vector search and no synonym expansion beyond `triggers`.
 - Configuration is not schema-validated.
 
-[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/7f0ff74...HEAD
+[Unreleased]: https://github.com/FrozenYty/dsh-memory/compare/d4044d6...HEAD
+[0.25.0]: https://github.com/FrozenYty/dsh-memory/commit/d4044d6
 [0.24.1]: https://github.com/FrozenYty/dsh-memory/commit/7f0ff74
 [0.24.0]: https://github.com/FrozenYty/dsh-memory/commit/efa8658
 [0.23.9]: https://github.com/FrozenYty/dsh-memory/commit/efa8658

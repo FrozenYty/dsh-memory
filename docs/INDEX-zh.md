@@ -15,6 +15,8 @@
 | 某个决定为什么是现在这样？ | [adr/](adr/)——一个决定一个文件 |
 | 怎么开分支、写提交、过 CI？ | [CONTRIBUTING.md](../CONTRIBUTING.md) |
 | 我是刚接手这个仓库的 AI 助手 | [AGENTS.md](../AGENTS.md) |
+| 还欠什么，每一项怎么证明做完了？ | [PLAN.md](../PLAN.md) |
+| 某一天改了什么、为什么、怎么验的？ | [PROGRESS.md](../PROGRESS.md) |
 | 版本之间改了什么？ | [CHANGELOG.md](../CHANGELOG.md) |
 | 某个词在这里是什么意思？ | [glossary-en-zh.md](glossary-en-zh.md) |
 | 测试覆盖了什么、怎么证明的？ | [test-plan-zh.md](test-plan-zh.md) |
