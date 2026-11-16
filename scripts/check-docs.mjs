@@ -8,6 +8,8 @@
 //   f) every key in index.js DEFAULTS is documented in both README tables
 //   g) the fixture policy and the bundled template are the same document
 //   h) README.md carries no Chinese outside its language switcher
+//   i) every document under docs/ that has one language also has the other
+//   j) README-zh.md carries no run of lower-case English prose outside code, links and quotations
 //
 // Rules are reported together so one run shows every problem.
 
@@ -349,6 +351,46 @@ function checkReadmeIsEnglish() {
   };
 }
 
+// The mirror of (h), and it exists for the same reason: without it, the Chinese README drifted into
+// English mid-sentence — `system prompt`, `toolchain`, and a bare `recall` — and nothing could fail.
+//
+// The judgement it needs is not "does this line contain Latin letters", because identifiers, commands,
+// paths and state values are Latin and must stay. What it looks for is **English prose**: two or more
+// consecutive **lower-case** English words, after the code, links, URLs and quoted citations are removed.
+//
+// Two words, not four: the mixing that actually happened was `system prompt` — two words — and a
+// four-word threshold passed it. Lower case, not any case: `DeepSeek Harness` and `Claude Code` are
+// proper names and stay, while a prose phrase in a Chinese sentence is almost never capitalised. That
+// distinction costs no allowlist, which is the part that would have drifted.
+function checkReadmeIsChinese() {
+  const text = readText(path.join(repoRoot, 'README-zh.md'));
+  if (text === null) return { ok: true, summary: 'no README-zh.md', details: [] };
+  const switcher = /^\s*\[English\]\([^)]*\)\s*\|\s*中文/;
+  const offenders = [];
+  let fenced = false;
+  text.split(/\r?\n/).forEach((line, index) => {
+    if (/^\s*```/.test(line)) {
+      fenced = !fenced;
+      return;
+    }
+    if (fenced || switcher.test(line) || /^\s*\|/.test(line)) return;
+    const bare = line
+      .replace(/`[^`]*`/g, ' ') // inline code: identifiers, commands, paths
+      .replace(/\[[^\]]*\]\([^)]*\)/g, ' ') // links, whose targets are English
+      .replace(/https?:\/\/\S+/g, ' ')
+      .replace(/\*[^*]+\*/g, ' ') // a quoted citation, such as a test name
+      .replace(/"[^"]*"/g, ' ')
+      .replace(/“[^”]*”/g, ' ');
+    const run = bare.match(/\b[a-z][a-z'-]*(?:\s+[a-z][a-z'-]*){1,}\b/);
+    if (run !== null) offenders.push(`line ${index + 1}: "${run[0].slice(0, 60)}"`);
+  });
+  return {
+    ok: offenders.length === 0,
+    summary: 'README-zh.md carries no run of lower-case English prose outside code, links and quotations',
+    details: offenders,
+  };
+}
+
 // Every document under docs/ is an -en / -zh pair. This is the rule that turns "we keep both languages
 // in step" from a promise into something that can fail — and the reason it exists: the first version of
 // this convention was written in prose, only the English half of four documents existed, and nothing
@@ -409,6 +451,7 @@ function main() {
     { label: 'f) configuration is documented', result: checkConfigTable() },
     { label: 'g) policy copies agree', result: checkPolicyCopies() },
     { label: 'h) README.md is English', result: checkReadmeIsEnglish() },
+    { label: 'j) README-zh.md is Chinese', result: checkReadmeIsChinese() },
     { label: 'i) every document is a pair', result: checkDocPairs() },
   ];
 

@@ -7,6 +7,36 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.28.0] — 2026-11-16
+
+### Changed
+
+**The Chinese README is Chinese again.** Four sentences had drifted into English mid-phrase — `system
+prompt`, `toolchain`, a bare `recall`, and `profile bundle`. Identifiers, commands, paths, URLs and state
+values stay as they are, because they are names; what changed is prose that had a Chinese word available
+and used an English one.
+
+Also corrected in both READMEs: the current version said `v0.23.2`, and the verify block said **88**
+mutations where the scan holds **92**. **A README whose headline numbers are stale is the one document a
+reader trusts without checking.**
+
+### Added
+
+**`check-docs` rule (j): `README-zh.md` carries no run of lower-case English prose.** The existing rule
+(h) checked only that the English README had no Chinese, and **nothing checked the reverse — which is why
+the drift above survived.**
+
+Two design points, both learned by getting them wrong first:
+
+- **Two words, not four.** The first version required four consecutive English words, and the crime is
+  `system prompt` — two. It passed a file containing exactly the defect it was written for.
+- **Lower case, not any case.** `DeepSeek Harness` and `Claude Code` are proper names that must stay, and
+  a prose phrase inside a Chinese sentence is almost never capitalised. That separator costs no allowlist,
+  which is the part that would have drifted.
+
+Verified by putting the defect back: the rule fails naming `line 13: "profile bundle"` and
+`line 126: "system prompt"`, and restoring the text returns it to green.
+
 ## [0.27.0] — 2026-11-16
 
 ### Changed — **the notebook moved, and it will not move again**

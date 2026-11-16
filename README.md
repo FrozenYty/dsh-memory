@@ -18,7 +18,7 @@ embeddings, no server, no model call on the read path. An empty notebook costs z
 
 ## Status
 
-- Current version: v0.23.2.
+- Current version: v0.27.0.
 - **In daily use, on the notebook it was written for.** 48 entries and 236 recorded reads between
   2026-11-11 and 2026-11-13. Both numbers come from the plugin's own `usage.jsonl`, so they are a record
   rather than a claim.
@@ -274,7 +274,7 @@ by design — see [ADR 0017](docs/adr/17-index-order-from-use.md).
 
 ```sh
 node tests/core.test.mjs                    # behavioural checks, no dependencies
-node scripts/mutation-scan.mjs              # 88 mutations, each must be killed
+node scripts/mutation-scan.mjs              # 92 mutations, each must be killed
 node scripts/eval-recall.mjs                # recall judgements over tests/qrels.json
 node scripts/check-docs.mjs                 # ADRs listed, links, language pairs, locale keys, version
 node scripts/check-paths.mjs                # no machine-specific paths in any document
