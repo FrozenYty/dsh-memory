@@ -439,6 +439,14 @@ function checkReadmeIsChinese() {
 // CHANGELOG.md and docs/adr/ are deliberately single-language (see docs/INDEX-en.md §4): a changelog is
 // appended to in order, and an ADR's reader is whoever implements next. The rule applies to docs/ pairs
 // and the README pair only.
+//
+// Every file in docs/ must be one of the recognised shapes. The first version of this rule checked the
+// three sets it knew about and said nothing about a file in none of them, so a lone single-language
+// document passed by being invisible. The list below is empty on purpose: a genuinely single-language
+// document is an exception that has to be named here, which is what makes it a decision rather than an
+// oversight.
+const SINGLE_LANGUAGE_DOCS = [];
+
 function checkDocPairs() {
   const details = [];
   const docsDir = path.join(repoRoot, 'docs');
@@ -465,6 +473,17 @@ function checkDocPairs() {
   for (const name of chinese) {
     const counterpart = `${name.slice(0, -'-zh.md'.length)}-en.md`;
     if (!files.includes(counterpart)) details.push(`docs/${name} has no English counterpart`);
+  }
+
+  // The gap the three loops above leave: a file in none of those sets is in none of those checks.
+  const recognised = new Set([...english, ...bilingual, ...chinese, ...SINGLE_LANGUAGE_DOCS]);
+  for (const name of files) {
+    if (!recognised.has(name)) {
+      details.push(
+        `docs/${name} is not an -en/-zh pair, a bilingual -en-zh file, or named in SINGLE_LANGUAGE_DOCS — ` +
+          'as written it is checked by nothing',
+      );
+    }
   }
 
   // The READMEs are the other pair, and the one a reader meets first.

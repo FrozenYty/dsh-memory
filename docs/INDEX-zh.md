@@ -21,6 +21,7 @@
 | 某个词在这里是什么意思？ | [glossary-en-zh.md](glossary-en-zh.md) |
 | 测试覆盖了什么、怎么证明的？ | [test-plan-zh.md](test-plan-zh.md) |
 | 某条 ADR 由什么保证它成立？ | [traceability-zh.md](traceability-zh.md) |
+| 怎么让宿主变更不至于把整个插件带走？ | [host-compatibility-zh.md](host-compatibility-zh.md) |
 
 ## 2. 谁赢
 

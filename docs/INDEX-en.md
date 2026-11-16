@@ -24,6 +24,7 @@ else.
 | What does a term mean here? | [glossary-en-zh.md](glossary-en-zh.md) |
 | What do the tests cover, and how is that proved? | [test-plan-en.md](test-plan-en.md) |
 | Which test holds a given decision in place? | [traceability-en.md](traceability-en.md) |
+| How do I stop the host taking the whole plugin down? | [host-compatibility-en.md](host-compatibility-en.md) |
 
 ## 2. Which one wins
 
