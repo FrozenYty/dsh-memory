@@ -89,6 +89,7 @@ const steps = [
   { name: 'syntax · bundle entries and every script', run: ['--check'], targets: ['index.js', 'notebook-core.js'] },
   { name: 'syntax · scripts/ (every .mjs)', sweep: 'scripts/*.mjs' },
   { name: 'behaviour · the test suite', script: 'tests/core.test.mjs' },
+  { name: 'behaviour · a host that removed one member', script: 'tests/host-surface.test.mjs' },
   { name: 'recall · judgements over tests/qrels.json', script: 'scripts/eval-recall.mjs' },
   { name: 'documents · no machine-specific paths', script: 'scripts/check-paths.mjs' },
   { name: 'documents · ADRs, links, locales, version, policy copies', script: 'scripts/check-docs.mjs' },
