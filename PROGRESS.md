@@ -12,6 +12,39 @@ takes over the second job from here on so the changelog can stay a release note.
 
 ## 2026-11-16
 
+- **The Chinese README had drifted into English, and the gate that should have caught it was one-way.**
+  Four phrases — `system prompt`, `toolchain`, a bare `recall`, `profile bundle` — sat inside Chinese
+  sentences. Rule (h) checked that `README.md` carried no Chinese; **nothing checked the reverse**, so the
+  drift was invisible by construction rather than by oversight.
+
+  Two numbers were wrong in both files as well: the stated version was `v0.23.2` while `package.json` said
+  0.27.0, and the verify block said **88** mutations where the scan holds **92**. **The README is the one
+  document a reader trusts without checking**, which is exactly why its numbers are the worst ones to
+  leave stale.
+
+- **The new rule failed to fail twice before it worked, and both failures are worth keeping.**
+
+  First version demanded **four** consecutive English words. The defect is `system prompt` — two — so the
+  rule passed a file containing precisely the thing it was written for. **A check that has never failed
+  is not a check**, and this one had been written to look right rather than to catch.
+
+  The fix was two words, which then flagged `DeepSeek Harness` and `Claude Code`. The separator I used is
+  **case**: proper names are capitalised and a prose phrase inside a Chinese sentence is not, so the rule
+  matches lower-case runs only. **That costs no allowlist** — and an allowlist is the part that would have
+  drifted next, which is the failure mode this repository keeps producing.
+
+  Proof it bites: putting the sentence back makes it fail naming `line 13: "profile bundle"` and
+  `line 126: "system prompt"`; restoring returns it to green.
+
+- **`profile bundle` was in my own "keep this" list and the rule overruled me.** I had decided it was a
+  DSH term worth leaving in English; the sentence reads fine without `profile`, so the term was habit
+  rather than need. **The rule being stricter than my first judgement is the point of writing it as a
+  rule.**
+
+- **`(i)` was never in the script's own header list**, alongside the new `(j)`. Both are documented now:
+  a script that describes its rules incompletely leaves the next reader to infer them from the code.
+
+
 - **The notebook's directory was whatever workspace happened to be open, and that is now fixed (ADR 0019).**
   `workspaceDir` defaulted to `'.agents/memory'` — a relative path — and `resolveDirs` did
   `resolve(cwd, config.workspaceDir)`. So 79 entries lived in the workspace's `.agents/memory` for no
