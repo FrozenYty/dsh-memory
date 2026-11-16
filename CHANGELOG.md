@@ -7,6 +7,33 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.29.0] — 2026-11-16
+
+### Changed
+
+**Rule (h) now covers every English document, not only the README** — `README.md` and each `-en.md`,
+five files instead of one.
+
+It needed a criterion that could tell a **quotation** from **prose**, and the old rule had none, which is
+why it stopped at the README. **Chinese inside an English line is allowed and always has been**: tokeniser
+examples (`mcp挂了`), the user's own colloquial test sentences, a display name, a quoted old description.
+They cannot be translated without destroying what they demonstrate, and `CHANGELOG.md` records that
+decision under *"Two kinds of Chinese are deliberately kept in English documents"*.
+
+**The line is a ratio, not a list.** A line that is more than 40% Chinese is prose someone forgot to write
+in English; a quotation is a few characters inside a long English line and sits far below it. **A list of
+permitted phrases would drift** — it is the mechanism this repository keeps choosing by mistake — while a
+ratio cannot.
+
+Verified by writing a Chinese sentence into `docs/architecture-en.md`: the rule fails naming
+`docs/architecture-en.md:43 (92% Chinese)`, and restoring returns it to green.
+
+### Notes
+
+- **No English document needed editing.** The five files were already correct: every Chinese line in them
+  is a quotation, the highest being 19%. The rule exists so that the next one is caught, not because
+  anything was wrong today.
+
 ## [0.28.0] — 2026-11-16
 
 ### Changed

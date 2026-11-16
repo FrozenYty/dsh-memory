@@ -7,7 +7,7 @@
 //   e) the version in package.json has a matching CHANGELOG section
 //   f) every key in index.js DEFAULTS is documented in both README tables
 //   g) the fixture policy and the bundled template are the same document
-//   h) README.md carries no Chinese outside its language switcher
+//   h) no English document carries a mostly-Chinese line (quotations are allowed)
 //   i) every document under docs/ that has one language also has the other
 //   j) README-zh.md carries no run of lower-case English prose outside code, links and quotations
 //
@@ -332,21 +332,61 @@ function checkPolicyCopies() {
   };
 }
 
-// The English README is the one document a reader may open without knowing Chinese, so it stays English.
-// The language switcher is the single allowed exception. Tokeniser examples are the reason this is
-// limited to README.md and not applied to docs/: `mcp挂了` cannot be explained in English.
-function checkReadmeIsEnglish() {
-  const text = readText(path.join(repoRoot, 'README.md'));
-  if (text === null) return { ok: true, summary: 'no README.md', details: [] };
+// Every English document stays English. The README is the one a reader may open without knowing Chinese,
+// and the same holds for the -en documents.
+//
+// **Chinese is allowed inside an English line; Chinese prose is not.** Tokeniser examples (`mcp挂了`), the
+// user's own colloquial test sentences, a display name and a quoted old description are all quotations —
+// they cannot be translated without destroying what they demonstrate, and CHANGELOG.md §"deliberately
+// kept" records that decision. What this rejects is a line that is *mostly* Chinese, because that is a
+// sentence someone forgot to write in English rather than a phrase someone quoted.
+//
+// The threshold is a ratio, not a count: quotations are a few characters inside a long English line, so
+// they sit far below it, while a sentence of Chinese prose sits far above. A rule that listed the
+// permitted phrases instead would drift; a ratio cannot.
+const CHINESE_PROSE_SHARE = 0.4;
+const cjkCount = (text) => (text.match(/[\u3400-\u9fff]/g) ?? []).length;
+
+function checkEnglishDocuments() {
   const switcher = /^\s*English\s*\|\s*\[中文\]/;
   const offenders = [];
-  text.split(/\r?\n/).forEach((line, index) => {
-    if (switcher.test(line)) return;
-    if (/[\u3400-\u9fff]/.test(line)) offenders.push(`line ${index + 1}: ${line.trim().slice(0, 70)}`);
-  });
+  let scanned = 0;
+
+  const files = ['README.md'];
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isDirectory()) walk(path.join(dir, entry.name));
+      else if (entry.name.endsWith('-en.md')) files.push(path.relative(repoRoot, path.join(dir, entry.name)));
+    }
+  };
+  walk(docsDir);
+
+  for (const name of files) {
+    const text = readText(path.join(repoRoot, name));
+    if (text === null) continue;
+    scanned += 1;
+    let fenced = false;
+    text.split(/\r?\n/).forEach((line, index) => {
+      if (/^\s*```/.test(line)) {
+        fenced = !fenced;
+        return;
+      }
+      if (fenced || switcher.test(line)) return;
+      const cjk = cjkCount(line);
+      if (cjk === 0) return;
+      // Share of the line that is Chinese, ignoring whitespace so indentation cannot dilute it.
+      const dense = line.replace(/\s/g, '');
+      if (dense.length === 0) return;
+      const share = cjk / dense.length;
+      if (share > CHINESE_PROSE_SHARE) {
+        offenders.push(`${name}:${index + 1} (${Math.round(share * 100)}% Chinese): ${line.trim().slice(0, 60)}`);
+      }
+    });
+  }
+
   return {
     ok: offenders.length === 0,
-    summary: 'README.md carries no Chinese outside the language switcher',
+    summary: `no English document carries a mostly-Chinese line (${scanned} file(s) scanned)`,
     details: offenders,
   };
 }
@@ -450,7 +490,7 @@ function main() {
     { label: 'e) version is recorded', result: checkVersionRecorded() },
     { label: 'f) configuration is documented', result: checkConfigTable() },
     { label: 'g) policy copies agree', result: checkPolicyCopies() },
-    { label: 'h) README.md is English', result: checkReadmeIsEnglish() },
+    { label: 'h) English documents stay English', result: checkEnglishDocuments() },
     { label: 'j) README-zh.md is Chinese', result: checkReadmeIsChinese() },
     { label: 'i) every document is a pair', result: checkDocPairs() },
   ];
