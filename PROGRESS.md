@@ -12,6 +12,42 @@ takes over the second job from here on so the changelog can stay a release note.
 
 ## 2026-11-16
 
+- **The lesson came from a sibling, and it cost it twelve tools.** `dsh-team` 0.43.35 registers none of its
+  own tools against `@deepseek-ai/dsh` 0.2.2-rc.3: `ctx.agentTeams.tryMembership` no longer exists, that
+  call sits in a loop inside `apply`, and one unguarded `TypeError` stops the whole bundle activating.
+  **The user sees every tool vanish and no message that says why.**
+
+  Established from three independent sources, which is why I state it: a scan of all 1259 files under the
+  installed `@deepseek-ai` tree found **zero** occurrences of the name; `listService` describes the service
+  as six members; and the package's own source registers it with `super(ctx, "agentTeams")` and declares
+  exactly those six.
+
+- **This plugin already had the right shape and no test for it.** `index.js` probes three required host APIs
+  and throws a named error, returns early when the optional service is absent, and catches around the
+  optional call. **That is correct and it was accidental** — nothing would have noticed if a later change
+  had removed the guard, which is the same distance from the crash as the sibling was.
+
+- **The first two versions of the new test could not fail, and the reason is worth keeping.** Both hid
+  `tokenMeter` entirely, so `apply` reached the early return `if (meter === undefined) return ''` and the
+  `try`/`catch` was never executed. Deleting the guard left the test green. **The case that kills a bundle
+  is the other one** — the service resolves and its member was renamed — and only that case reaches the
+  guarded line. With it, deleting the `try`/`catch` fails with
+  `meter.contextPressure is not a function`, **the exact production message from the sibling.**
+
+  **Three times today a check passed because it never reached the code it guarded.** A regex would have
+  been worse, not better: it cannot tell the two states apart at all.
+
+- **`docs/host-compatibility.md` is deliberately not a document pair.** Every other file under `docs/` is
+  an `-en`/`-zh` pair, and this one is not, because it exists to be **forwarded to other bundle
+  maintainers** who are not this repository's readers. A translation would be a second copy to keep in
+  step for an audience that will copy the English text anyway. `check-docs` rule (i) does not apply to the
+  shape, and `check-paths` scans it like any other document.
+
+- **The forwarding rule was applied, not remembered.** The draft was grepped for a drive letter before it
+  was finished: a path that resolves here does not resolve for the person receiving it, and that failure is
+  invisible to the sender by construction.
+
+
 - **Rule (h) covered one file and claimed to cover the language.** It checked `README.md` for Chinese and
   stopped there, with a comment explaining that tokeniser examples made `docs/` impossible to check. That
   was true only while the rule had no way to tell a **quotation** from **prose** — and it does: a line

@@ -7,6 +7,36 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.30.0] — 2026-11-16
+
+### Added
+
+**A fake-host test: `tests/host-surface.test.mjs`, and it runs in the gate.** It calls `apply` against a
+context with one member removed and asserts what happens, in three states:
+
+| fake host | asserted |
+|---|---|
+| every member present | loads, and all seven tools register |
+| `tokenMeter` absent | loads, tools register, the hint degrades |
+| `tokenMeter` present with `contextPressure` **renamed** | loads, tools register, the call does not escape |
+
+The third is the one that matters. It was missing from the first two versions of this file, and both of
+them passed with the guard deleted — because they exercised the early return and never reached the guarded
+call. With it, removing the `try`/`catch` fails the test with `meter.contextPressure is not a function`,
+**which is the exact message `dsh-team` produced in production.**
+
+**`docs/host-compatibility.md`** — written to be forwarded. It carries the measured failure, the three
+rules (required member, feature member, listener), the check and how to prove it can fail, and a migration
+checklist. **Nothing in it depends on this plugin**, so it can be handed to any other bundle.
+
+### Why
+
+On this machine `dsh-team` 0.43.35 registers **none** of its twelve tools against `@deepseek-ai/dsh`
+0.2.2-rc.3, because `ctx.agentTeams.tryMembership` no longer exists and one unguarded call inside `apply`
+stops the whole bundle activating. **This plugin already survives that shape** — `index.js` probes its
+three required APIs and catches around the optional one — but nothing tested it, so nothing would have
+noticed if a later change had removed the guard.
+
 ## [0.29.0] — 2026-11-16
 
 ### Changed
