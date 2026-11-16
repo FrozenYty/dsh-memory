@@ -12,6 +12,30 @@ takes over the second job from here on so the changelog can stay a release note.
 
 ## 2026-11-16
 
+- **Rule (h) covered one file and claimed to cover the language.** It checked `README.md` for Chinese and
+  stopped there, with a comment explaining that tokeniser examples made `docs/` impossible to check. That
+  was true only while the rule had no way to tell a **quotation** from **prose** — and it does: a line
+  that is mostly Chinese is a sentence someone forgot to write in English, while `mcp挂了` inside a long
+  English line is a quotation. **The rule now covers `README.md` and every `-en.md`, five files.**
+
+- **Nothing needed editing, and that is the finding rather than a disappointment.** All five files were
+  already right: every Chinese line in them is a quotation, the densest being 19%. So this change adds no
+  fix — it makes the next mistake visible. **A rule added after a defect and a rule added before one look
+  identical in the diff and are not the same work**, and saying which one this is matters to whoever reads
+  it later.
+
+- **The threshold is a ratio because a list would drift.** Forty percent: quotations sit far below it,
+  Chinese prose far above. The alternative — naming the permitted phrases — is the mechanism this
+  repository has chosen by mistake more than once (a second copy of a fact, a second place to keep in
+  step). **A ratio cannot go stale**, and the failure message prints the share (`92% Chinese`) so the
+  verdict is arguable rather than mysterious.
+
+- **Proved by writing the defect**: a Chinese sentence in `docs/architecture-en.md` makes the rule fail
+  naming `docs\architecture-en.md:43 (92% Chinese)`, and restoring returns it to green. **Two of my four
+  new rules this session were wrong in a way only a failed proof could show** — the Chinese-prose rule
+  passed a file containing its own defect until the threshold dropped from four words to two.
+
+
 - **The Chinese README had drifted into English, and the gate that should have caught it was one-way.**
   Four phrases — `system prompt`, `toolchain`, a bare `recall`, `profile bundle` — sat inside Chinese
   sentences. Rule (h) checked that `README.md` carried no Chinese; **nothing checked the reverse**, so the
